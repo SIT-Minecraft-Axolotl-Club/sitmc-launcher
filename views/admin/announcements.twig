@@ -1,0 +1,102 @@
+{% extends 'admin.base' %}
+
+{% block title %}{{ trans('sitmc-launcher::launcher.announcements.title') }}{% endblock %}
+
+{% block content %}
+  {% if status %}
+    <div class="callout callout-success">{{ status }}</div>
+  {% endif %}
+
+  <div class="card card-primary">
+    <div class="card-header">
+      <h3 class="card-title">{{ trans('sitmc-launcher::launcher.announcements.title') }}</h3>
+    </div>
+    <div class="card-body">
+      <p class="text-muted">
+        {{ trans('sitmc-launcher::launcher.announcements.intro', {path: endpointPath}) }}
+      </p>
+
+      {% if announcements is empty %}
+        <div class="callout callout-info">
+          {{ trans('sitmc-launcher::launcher.announcements.empty') }}
+        </div>
+      {% else %}
+        <table class="table table-bordered table-striped">
+          <thead>
+            <tr>
+              <th>{{ trans('sitmc-launcher::launcher.field.announcement_id') }}</th>
+              <th>{{ trans('sitmc-launcher::launcher.field.title') }}</th>
+              <th>{{ trans('sitmc-launcher::launcher.field.type') }}</th>
+              <th>{{ trans('sitmc-launcher::launcher.field.priority') }}</th>
+              <th>{{ trans('sitmc-launcher::launcher.field.starts_at') }}</th>
+              <th>{{ trans('sitmc-launcher::launcher.announcements.state') }}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in announcements %}
+              <tr>
+                <td><code>{{ row.announcement_id }}</code></td>
+                <td>{{ row.title }}</td>
+                <td>{{ trans('sitmc-launcher::launcher.type.' ~ row.type) }}</td>
+                <td>{{ trans('sitmc-launcher::launcher.priority.' ~ row.priority) }}</td>
+                <td>
+                  {{ row.starts_at ?: trans('sitmc-launcher::launcher.announcements.immediately') }}
+                  <small class="d-block text-muted">
+                    {{ row.ends_at ?: trans('sitmc-launcher::launcher.announcements.never-ends') }}
+                  </small>
+                </td>
+                <td>
+                  {% if row.problem %}
+                    <span class="badge bg-danger">
+                      {{ trans('sitmc-launcher::launcher.problem.' ~ row.problem) }}
+                    </span>
+                  {% elseif not row.enabled %}
+                    <span class="badge bg-secondary">
+                      {{ trans('sitmc-launcher::launcher.announcements.disabled') }}
+                    </span>
+                  {% else %}
+                    <span class="badge bg-{{ row.window == 'active' ? 'success' : 'warning' }}">
+                      {{ trans('sitmc-launcher::launcher.announcements.window.' ~ row.window) }}
+                    </span>
+                  {% endif %}
+                </td>
+                <td>
+                  <a
+                    class="btn btn-sm btn-default"
+                    href="{{ route('sitmc-launcher.admin.announcements.edit', {announcementId: row.announcement_id}) }}"
+                  >
+                    {{ trans('sitmc-launcher::launcher.action.edit') }}
+                  </a>
+                  <form
+                    class="d-inline"
+                    method="post"
+                    action="{{ route('sitmc-launcher.admin.announcements.destroy', {announcementId: row.announcement_id}) }}"
+                    onsubmit="return confirm('{{ trans('sitmc-launcher::launcher.announcements.confirm-delete') }}')"
+                  >
+                    {{ csrf_field() }}
+                    {{ method_field('DELETE') }}
+                    <button class="btn btn-sm btn-danger" type="submit">
+                      {{ trans('sitmc-launcher::launcher.action.delete') }}
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+    </div>
+    <div class="card-footer">
+      <a class="btn btn-primary" href="{{ route('sitmc-launcher.admin.announcements.create') }}">
+        {{ trans('sitmc-launcher::launcher.announcements.create') }}
+      </a>
+      <a class="btn btn-default float-right" href="{{ route('sitmc-launcher.admin.releases.index') }}">
+        {{ trans('sitmc-launcher::launcher.releases.menu') }}
+      </a>
+      <a class="btn btn-default float-right mr-2" href="{{ route('sitmc-launcher.admin.index') }}">
+        {{ trans('sitmc-launcher::launcher.menu') }}
+      </a>
+    </div>
+  </div>
+{% endblock %}

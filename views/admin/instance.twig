@@ -1,0 +1,358 @@
+{% extends 'admin.base' %}
+
+{% set editing = instance is not null %}
+
+{% block title %}
+  {{ editing
+    ? trans('sitmc-launcher::launcher.instance.edit-title', {id: instance.instance_id})
+    : trans('sitmc-launcher::launcher.instance.create-title') }}
+{% endblock %}
+
+{% block content %}
+  {% if status %}
+    <div class="callout callout-success">{{ status }}</div>
+  {% endif %}
+
+  {% if editing and instance.problem %}
+    <div class="callout callout-warning">
+      {{ trans('sitmc-launcher::launcher.instance.not-published') }}
+      <strong>{{ trans('sitmc-launcher::launcher.problem.' ~ instance.problem) }}</strong>
+    </div>
+  {% endif %}
+
+  <div class="row">
+    <div class="col-md-6">
+      <form
+        class="card card-primary"
+        method="post"
+        action="{{ editing
+          ? route('sitmc-launcher.admin.update', {instanceId: instance.instance_id})
+          : route('sitmc-launcher.admin.store') }}"
+      >
+        {{ csrf_field() }}
+        {% if editing %}{{ method_field('PUT') }}{% endif %}
+
+        <div class="card-header">
+          <h3 class="card-title">{{ trans('sitmc-launcher::launcher.instance.title') }}</h3>
+        </div>
+
+        <div class="card-body">
+          {% if errors is defined and errors.any() %}
+            <div class="callout callout-danger">
+              <ul class="mb-0">
+                {% for message in errors.all() %}
+                  <li>{{ message }}</li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% endif %}
+
+          <div class="form-group">
+            <label>{{ trans('sitmc-launcher::launcher.field.id') }}</label>
+            <input
+              class="form-control"
+              name="instance_id"
+              value="{{ instance ? instance.instance_id : '' }}"
+              {% if editing %}readonly{% endif %}
+              required
+            >
+            <small class="form-text text-muted">
+              {{ trans('sitmc-launcher::launcher.field.id-hint') }}
+            </small>
+          </div>
+
+          <div class="form-group">
+            <label>{{ trans('sitmc-launcher::launcher.field.name') }}</label>
+            <input class="form-control" name="name" value="{{ instance ? instance.name : '' }}" required>
+          </div>
+
+          <div class="form-group">
+            <label>{{ trans('sitmc-launcher::launcher.field.description') }}</label>
+            <textarea class="form-control" name="description" rows="3">{{ instance ? instance.description : '' }}</textarea>
+          </div>
+
+          <div class="form-group">
+            <label>{{ trans('sitmc-launcher::launcher.field.icon_url') }}</label>
+            <input class="form-control" name="icon_url" value="{{ instance ? instance.icon_url : '' }}">
+            <small class="form-text text-muted">
+              {{ trans('sitmc-launcher::launcher.field.icon_url-hint') }}
+            </small>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group col-md-6">
+              <label>{{ trans('sitmc-launcher::launcher.field.game_version') }}</label>
+              <input
+                class="form-control"
+                name="game_version"
+                value="{{ instance ? instance.game_version : '' }}"
+                placeholder="1.20.1"
+                required
+              >
+            </div>
+            <div class="form-group col-md-3">
+              <label>{{ trans('sitmc-launcher::launcher.field.loader') }}</label>
+              <input
+                class="form-control"
+                name="loader"
+                value="{{ instance ? instance.loader : '' }}"
+                placeholder="fabric"
+              >
+            </div>
+            <div class="form-group col-md-3">
+              <label>{{ trans('sitmc-launcher::launcher.field.loader_version') }}</label>
+              <input
+                class="form-control"
+                name="loader_version"
+                value="{{ instance ? instance.loader_version : '' }}"
+                placeholder="0.15.11"
+              >
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group col-md-8">
+              <label>{{ trans('sitmc-launcher::launcher.field.server_address') }}</label>
+              <input
+                class="form-control"
+                name="server_address"
+                value="{{ instance ? instance.server_address : '' }}"
+                placeholder="mc.sitmc.club"
+              >
+            </div>
+            <div class="form-group col-md-4">
+              <label>{{ trans('sitmc-launcher::launcher.field.server_port') }}</label>
+              <input
+                class="form-control"
+                name="server_port"
+                type="number"
+                min="1"
+                max="65535"
+                value="{{ instance and instance.server_port ? instance.server_port : '' }}"
+              >
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group col-md-4">
+              <label>{{ trans('sitmc-launcher::launcher.field.sort') }}</label>
+              <input
+                class="form-control"
+                name="sort"
+                type="number"
+                value="{{ instance ? instance.sort : 0 }}"
+              >
+            </div>
+            <div class="form-group col-md-4">
+              <div class="form-check mt-4">
+                <input
+                  id="field-required"
+                  class="form-check-input"
+                  type="checkbox"
+                  name="required"
+                  value="1"
+                  {% if not instance or instance.required %}checked{% endif %}
+                >
+                <label class="form-check-label" for="field-required">
+                  {{ trans('sitmc-launcher::launcher.field.required') }}
+                </label>
+                <small class="form-text text-muted d-block">
+                  {{ trans('sitmc-launcher::launcher.field.required-hint') }}
+                </small>
+              </div>
+            </div>
+            <div class="form-group col-md-4">
+              <div class="form-check mt-4">
+                <input
+                  id="field-enabled"
+                  class="form-check-input"
+                  type="checkbox"
+                  name="enabled"
+                  value="1"
+                  {% if not instance or instance.enabled %}checked{% endif %}
+                >
+                <label class="form-check-label" for="field-enabled">
+                  {{ trans('sitmc-launcher::launcher.field.enabled') }}
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-footer">
+          <button class="btn btn-primary" type="submit">
+            {{ trans('sitmc-launcher::launcher.action.save') }}
+          </button>
+          <a class="btn btn-default float-right" href="{{ route('sitmc-launcher.admin.index') }}">
+            {{ trans('sitmc-launcher::launcher.action.back') }}
+          </a>
+        </div>
+      </form>
+    </div>
+
+    {% if editing %}
+      <div class="col-md-6">
+        <div class="card card-info">
+          <div class="card-header">
+            <h3 class="card-title">{{ trans('sitmc-launcher::launcher.packs.title') }}</h3>
+          </div>
+          <div class="card-body">
+            <p class="text-muted">
+              {{ trans('sitmc-launcher::launcher.packs.intro') }}
+            </p>
+
+            {% if packs is empty %}
+              <div class="callout callout-warning">
+                {{ trans('sitmc-launcher::launcher.packs.empty') }}
+              </div>
+            {% else %}
+              <table class="table table-sm table-bordered">
+                <thead>
+                  <tr>
+                    <th>{{ trans('sitmc-launcher::launcher.field.revision') }}</th>
+                    <th>{{ trans('sitmc-launcher::launcher.packs.source') }}</th>
+                    <th>{{ trans('sitmc-launcher::launcher.field.sha1') }}</th>
+                    <th>{{ trans('sitmc-launcher::launcher.field.size') }}</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for pack in packs %}
+                    <tr>
+                      <td>
+                        {{ pack.revision }}
+                        {% if pack.revision == instance.revision %}
+                          <span class="badge bg-success">
+                            {{ trans('sitmc-launcher::launcher.packs.current') }}
+                          </span>
+                        {% endif %}
+                      </td>
+                      <td>
+                        {% if pack.url %}
+                          <a href="{{ pack.url }}" target="_blank" rel="noopener noreferrer">
+                            {{ trans('sitmc-launcher::launcher.packs.external') }}
+                          </a>
+                        {% else %}
+                          {{ pack.original_name }}
+                        {% endif %}
+                      </td>
+                      <td><code>{{ pack.sha1 }}</code></td>
+                      <td>{{ pack.size }}</td>
+                      <td>
+                        {% if pack.revision != instance.revision %}
+                          <form
+                            class="d-inline"
+                            method="post"
+                            action="{{ route('sitmc-launcher.admin.packs.activate', {
+                              instanceId: instance.instance_id,
+                              revision: pack.revision,
+                            }) }}"
+                          >
+                            {{ csrf_field() }}
+                            <button class="btn btn-sm btn-default" type="submit">
+                              {{ trans('sitmc-launcher::launcher.action.activate') }}
+                            </button>
+                          </form>
+                        {% endif %}
+                        <form
+                          class="d-inline"
+                          method="post"
+                          action="{{ route('sitmc-launcher.admin.packs.destroy', {
+                            instanceId: instance.instance_id,
+                            revision: pack.revision,
+                          }) }}"
+                          onsubmit="return confirm('{{ trans('sitmc-launcher::launcher.packs.confirm-delete') }}')"
+                        >
+                          {{ csrf_field() }}
+                          {{ method_field('DELETE') }}
+                          <button class="btn btn-sm btn-danger" type="submit">
+                            {{ trans('sitmc-launcher::launcher.action.delete') }}
+                          </button>
+                        </form>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            {% endif %}
+          </div>
+        </div>
+
+        <form
+          class="card card-success"
+          method="post"
+          enctype="multipart/form-data"
+          action="{{ route('sitmc-launcher.admin.packs.store', {instanceId: instance.instance_id}) }}"
+        >
+          {{ csrf_field() }}
+          <div class="card-header">
+            <h3 class="card-title">{{ trans('sitmc-launcher::launcher.packs.upload') }}</h3>
+          </div>
+          <div class="card-body">
+            <p class="text-muted">
+              {{ trans('sitmc-launcher::launcher.packs.upload-intro') }}
+            </p>
+            <div class="form-group">
+              <input
+                class="form-control-file"
+                type="file"
+                name="pack"
+                accept=".mrpack,application/zip"
+                required
+              >
+            </div>
+            <small class="form-text text-muted">
+              {{ trans('sitmc-launcher::launcher.packs.limits', {
+                upload: limits.max_upload,
+                post: limits.max_post,
+              }) }}
+            </small>
+          </div>
+          <div class="card-footer">
+            <button class="btn btn-success" type="submit">
+              {{ trans('sitmc-launcher::launcher.packs.upload-button') }}
+            </button>
+          </div>
+        </form>
+
+        <form
+          class="card card-secondary"
+          method="post"
+          action="{{ route('sitmc-launcher.admin.packs.external', {instanceId: instance.instance_id}) }}"
+        >
+          {{ csrf_field() }}
+          <div class="card-header">
+            <h3 class="card-title">{{ trans('sitmc-launcher::launcher.packs.external-title') }}</h3>
+          </div>
+          <div class="card-body">
+            <p class="text-muted">
+              {{ trans('sitmc-launcher::launcher.packs.external-intro') }}
+            </p>
+            <div class="form-group">
+              <label>{{ trans('sitmc-launcher::launcher.field.pack_url') }}</label>
+              <input class="form-control" name="url" placeholder="https://cdn.sitmc.club/pack.mrpack" required>
+            </div>
+            <div class="form-row">
+              <div class="form-group col-md-8">
+                <label>{{ trans('sitmc-launcher::launcher.field.sha1') }}</label>
+                <input class="form-control" name="sha1" required>
+                <small class="form-text text-muted">
+                  {{ trans('sitmc-launcher::launcher.field.sha1-hint') }}
+                </small>
+              </div>
+              <div class="form-group col-md-4">
+                <label>{{ trans('sitmc-launcher::launcher.field.size') }}</label>
+                <input class="form-control" name="size" type="number" min="1">
+              </div>
+            </div>
+          </div>
+          <div class="card-footer">
+            <button class="btn btn-secondary" type="submit">
+              {{ trans('sitmc-launcher::launcher.packs.external-button') }}
+            </button>
+          </div>
+        </form>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}

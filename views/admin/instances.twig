@@ -1,0 +1,170 @@
+{% extends 'admin.base' %}
+
+{% block title %}{{ trans('sitmc-launcher::launcher.title') }}{% endblock %}
+
+{% block content %}
+  {% if status %}
+    <div class="callout callout-success">{{ status }}</div>
+  {% endif %}
+
+  <div class="row">
+    <div class="col-md-8">
+      <div class="card card-primary">
+        <div class="card-header">
+          <h3 class="card-title">{{ trans('sitmc-launcher::launcher.instances.title') }}</h3>
+        </div>
+        <div class="card-body">
+          <p class="text-muted">
+            {{ trans('sitmc-launcher::launcher.instances.intro', {path: manifestPath}) }}
+          </p>
+
+          {% if instances is empty %}
+            <div class="callout callout-info">
+              {{ trans('sitmc-launcher::launcher.instances.empty') }}
+            </div>
+          {% else %}
+            <table class="table table-bordered table-striped">
+              <thead>
+                <tr>
+                  <th>{{ trans('sitmc-launcher::launcher.field.id') }}</th>
+                  <th>{{ trans('sitmc-launcher::launcher.field.name') }}</th>
+                  <th>{{ trans('sitmc-launcher::launcher.field.revision') }}</th>
+                  <th>{{ trans('sitmc-launcher::launcher.field.game_version') }}</th>
+                  <th>{{ trans('sitmc-launcher::launcher.instances.publish') }}</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in instances %}
+                  <tr>
+                    <td><code>{{ row.instance_id }}</code></td>
+                    <td>
+                      {{ row.name }}
+                      {% if not row.enabled %}
+                        <span class="badge bg-secondary">
+                          {{ trans('sitmc-launcher::launcher.instances.disabled') }}
+                        </span>
+                      {% endif %}
+                    </td>
+                    <td>{{ row.revision }}</td>
+                    <td>
+                      {{ row.game_version }}
+                      {% if row.loader %}
+                        / {{ row.loader }}{% if row.loader_version %} {{ row.loader_version }}{% endif %}
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if row.problem %}
+                        <span class="badge bg-danger">
+                          {{ trans('sitmc-launcher::launcher.problem.' ~ row.problem) }}
+                        </span>
+                      {% else %}
+                        <span class="badge bg-success">
+                          {{ trans('sitmc-launcher::launcher.instances.published') }}
+                        </span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      <a
+                        class="btn btn-sm btn-default"
+                        href="{{ route('sitmc-launcher.admin.edit', {instanceId: row.instance_id}) }}"
+                      >
+                        {{ trans('sitmc-launcher::launcher.action.edit') }}
+                      </a>
+                      <form
+                        class="d-inline"
+                        method="post"
+                        action="{{ route('sitmc-launcher.admin.destroy', {instanceId: row.instance_id}) }}"
+                        onsubmit="return confirm('{{ trans('sitmc-launcher::launcher.instances.confirm-delete') }}')"
+                      >
+                        {{ csrf_field() }}
+                        {{ method_field('DELETE') }}
+                        <button class="btn btn-sm btn-danger" type="submit">
+                          {{ trans('sitmc-launcher::launcher.action.delete') }}
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% endif %}
+        </div>
+        <div class="card-footer">
+          <a class="btn btn-primary" href="{{ route('sitmc-launcher.admin.create') }}">
+            {{ trans('sitmc-launcher::launcher.instances.create') }}
+          </a>
+          <a class="btn btn-default float-right" href="{{ route('sitmc-launcher.admin.releases.index') }}">
+            {{ trans('sitmc-launcher::launcher.releases.menu') }}
+          </a>
+          <a
+            class="btn btn-default float-right mr-2"
+            href="{{ route('sitmc-launcher.admin.announcements.index') }}"
+          >
+            {{ trans('sitmc-launcher::launcher.announcements.menu') }}
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <form class="card card-info" method="post" action="{{ route('sitmc-launcher.admin.settings') }}">
+        {{ csrf_field() }}
+        <div class="card-header">
+          <h3 class="card-title">{{ trans('sitmc-launcher::launcher.settings.title') }}</h3>
+        </div>
+        <div class="card-body">
+          <p class="text-muted">{{ trans('sitmc-launcher::launcher.settings.intro') }}</p>
+
+          <div class="form-group">
+            <label>{{ trans('sitmc-launcher::launcher.settings.min_version') }}</label>
+            <input
+              class="form-control"
+              name="min_version"
+              value="{{ settings.min_version }}"
+              placeholder="1.2.0"
+            >
+            <small class="form-text text-muted">
+              {{ trans('sitmc-launcher::launcher.settings.min_version-hint') }}
+            </small>
+          </div>
+
+          <div class="form-group">
+            <label>{{ trans('sitmc-launcher::launcher.settings.latest_version') }}</label>
+            <input
+              class="form-control"
+              name="latest_version"
+              value="{{ settings.latest_version }}"
+              placeholder="1.2.0"
+            >
+            <small class="form-text text-muted">
+              {{ trans('sitmc-launcher::launcher.settings.latest_version-hint') }}
+            </small>
+          </div>
+
+          <div class="form-check">
+            <input
+              id="force-update"
+              class="form-check-input"
+              type="checkbox"
+              name="force_update"
+              value="1"
+              {% if settings.force_update %}checked{% endif %}
+            >
+            <label class="form-check-label" for="force-update">
+              {{ trans('sitmc-launcher::launcher.settings.force_update') }}
+            </label>
+            <small class="form-text text-muted">
+              {{ trans('sitmc-launcher::launcher.settings.force_update-hint') }}
+            </small>
+          </div>
+        </div>
+        <div class="card-footer">
+          <button class="btn btn-primary" type="submit">
+            {{ trans('sitmc-launcher::launcher.action.save') }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}

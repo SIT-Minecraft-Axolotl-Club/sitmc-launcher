@@ -1,0 +1,194 @@
+{% extends 'admin.base' %}
+
+{% set editing = release is not null %}
+
+{% block title %}
+  {{ editing
+    ? trans('sitmc-launcher::launcher.release.edit-title', {version: release.version})
+    : trans('sitmc-launcher::launcher.release.create-title') }}
+{% endblock %}
+
+{% block content %}
+  {% if status %}
+    <div class="callout callout-success">{{ status }}</div>
+  {% endif %}
+
+  {% if editing and problems %}
+    <div class="callout callout-warning">
+      <p class="mb-1">{{ trans('sitmc-launcher::launcher.release.incomplete') }}</p>
+      <ul class="mb-0">
+        {% for problem in problems %}
+          <li>{{ trans('sitmc-launcher::launcher.problem.' ~ problem) }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  <div class="row">
+    <div class="col-md-7">
+      <form
+        class="card card-primary"
+        method="post"
+        action="{{ editing
+          ? route('sitmc-launcher.admin.releases.update', {id: release.id})
+          : route('sitmc-launcher.admin.releases.store') }}"
+      >
+        {{ csrf_field() }}
+        {% if editing %}{{ method_field('PUT') }}{% endif %}
+
+        <div class="card-header">
+          <h3 class="card-title">{{ trans('sitmc-launcher::launcher.release.title') }}</h3>
+        </div>
+
+        <div class="card-body">
+          {% if errors is defined and errors.any() %}
+            <div class="callout callout-danger">
+              <ul class="mb-0">
+                {% for message in errors.all() %}
+                  <li>{{ message }}</li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% endif %}
+
+          <div class="form-row">
+            <div class="form-group col-md-4">
+              <label>{{ trans('sitmc-launcher::launcher.field.channel') }}</label>
+              <select class="form-control" name="channel">
+                {% for channel in ['release', 'beta'] %}
+                  <option
+                    value="{{ channel }}"
+                    {% if (editing and release.channel == channel) or (not editing and channel == 'release') %}selected{% endif %}
+                  >
+                    {{ trans('sitmc-launcher::launcher.channel.' ~ channel) }}
+                  </option>
+                {% endfor %}
+              </select>
+              <small class="form-text text-muted">
+                {{ trans('sitmc-launcher::launcher.field.channel-hint') }}
+              </small>
+            </div>
+            <div class="form-group col-md-4">
+              <label>{{ trans('sitmc-launcher::launcher.field.version') }}</label>
+              <input
+                class="form-control"
+                name="version"
+                value="{{ editing ? release.version : '' }}"
+                placeholder="1.2.3"
+                required
+              >
+              <small class="form-text text-muted">
+                {{ trans('sitmc-launcher::launcher.field.version-hint') }}
+              </small>
+            </div>
+            <div class="form-group col-md-4">
+              <label>{{ trans('sitmc-launcher::launcher.field.pub_date') }}</label>
+              <input
+                class="form-control"
+                type="datetime-local"
+                name="pub_date"
+                value="{{ editing ? release.pub_date_input : nowInput }}"
+                required
+              >
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>{{ trans('sitmc-launcher::launcher.field.notes') }}</label>
+            <textarea class="form-control" name="notes" rows="10">{{ editing ? release.notes : '' }}</textarea>
+            <small class="form-text text-muted">
+              {{ trans('sitmc-launcher::launcher.field.notes-hint') }}
+            </small>
+          </div>
+
+          <div class="form-group">
+            <label>{{ trans('sitmc-launcher::launcher.field.artifact_url') }}</label>
+            <input
+              class="form-control"
+              name="url"
+              value="{{ editing ? release.url : '' }}"
+              placeholder="https://cdn.sitmc.club/launcher/2.0.1/Axolotl_Launcher_2.0.1_x64-setup.exe"
+            >
+            <small class="form-text text-muted">
+              {{ trans('sitmc-launcher::launcher.field.artifact_url-hint') }}
+            </small>
+          </div>
+
+          <div class="form-group">
+            <label>{{ trans('sitmc-launcher::launcher.field.signature') }}</label>
+            <textarea
+              class="form-control"
+              name="signature"
+              rows="4"
+              placeholder="untrusted comment: signature from minisign secret key"
+            >{{ editing ? release.signature : '' }}</textarea>
+            <small class="form-text text-muted">
+              {{ trans('sitmc-launcher::launcher.field.signature-hint') }}
+            </small>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group col-md-4">
+              <label>{{ trans('sitmc-launcher::launcher.field.target') }}</label>
+              <input
+                class="form-control"
+                name="target"
+                value="{{ editing ? release.target : '' }}"
+                placeholder="windows"
+              >
+            </div>
+            <div class="form-group col-md-4">
+              <label>{{ trans('sitmc-launcher::launcher.field.arch') }}</label>
+              <input
+                class="form-control"
+                name="arch"
+                value="{{ editing ? release.arch : '' }}"
+                placeholder="x86_64"
+              >
+            </div>
+            <div class="form-group col-md-4">
+              <div class="form-check mt-4">
+                <input
+                  id="field-enabled"
+                  class="form-check-input"
+                  type="checkbox"
+                  name="enabled"
+                  value="1"
+                  {% if not editing or release.enabled %}checked{% endif %}
+                >
+                <label class="form-check-label" for="field-enabled">
+                  {{ trans('sitmc-launcher::launcher.releases.enabled') }}
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <small class="form-text text-muted">
+            {{ trans('sitmc-launcher::launcher.field.platform-hint') }}
+          </small>
+        </div>
+
+        <div class="card-footer">
+          <button class="btn btn-primary" type="submit">
+            {{ trans('sitmc-launcher::launcher.action.save') }}
+          </button>
+          <a class="btn btn-default float-right" href="{{ route('sitmc-launcher.admin.releases.index') }}">
+            {{ trans('sitmc-launcher::launcher.action.back') }}
+          </a>
+        </div>
+      </form>
+    </div>
+
+    <div class="col-md-5">
+      <div class="card card-info">
+        <div class="card-header">
+          <h3 class="card-title">{{ trans('sitmc-launcher::launcher.release.dynamic-title') }}</h3>
+        </div>
+        <div class="card-body">
+          <p class="text-muted">{{ trans('sitmc-launcher::launcher.release.dynamic-intro') }}</p>
+          <pre class="mb-0">{{ dynamicPath }}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,210 @@
+{% extends 'admin.base' %}
+
+{% set editing = announcement is not null %}
+
+{% block title %}
+  {{ editing
+    ? trans('sitmc-launcher::launcher.announcement.edit-title', {id: announcement.announcement_id})
+    : trans('sitmc-launcher::launcher.announcement.create-title') }}
+{% endblock %}
+
+{% block content %}
+  {% if status %}
+    <div class="callout callout-success">{{ status }}</div>
+  {% endif %}
+
+  {% if editing and problems %}
+    <div class="callout callout-warning">
+      <p class="mb-1">{{ trans('sitmc-launcher::launcher.announcement.not-published') }}</p>
+      <ul class="mb-0">
+        {% for problem in problems %}
+          <li>{{ trans('sitmc-launcher::launcher.problem.' ~ problem) }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  <form
+    class="card card-primary"
+    method="post"
+    action="{{ editing
+      ? route('sitmc-launcher.admin.announcements.update', {announcementId: announcement.announcement_id})
+      : route('sitmc-launcher.admin.announcements.store') }}"
+  >
+    {{ csrf_field() }}
+    {% if editing %}{{ method_field('PUT') }}{% endif %}
+
+    <div class="card-header">
+      <h3 class="card-title">{{ trans('sitmc-launcher::launcher.announcement.title') }}</h3>
+    </div>
+
+    <div class="card-body">
+      {% if errors is defined and errors.any() %}
+        <div class="callout callout-danger">
+          <ul class="mb-0">
+            {% for message in errors.all() %}
+              <li>{{ message }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+
+      <div class="form-row">
+        <div class="form-group col-md-4">
+          <label>{{ trans('sitmc-launcher::launcher.field.announcement_id') }}</label>
+          <input
+            class="form-control"
+            name="announcement_id"
+            value="{{ editing ? announcement.announcement_id : '' }}"
+            {% if editing %}readonly{% endif %}
+            required
+          >
+          <small class="form-text text-muted">
+            {{ trans('sitmc-launcher::launcher.field.announcement_id-hint') }}
+          </small>
+        </div>
+        <div class="form-group col-md-8">
+          <label>{{ trans('sitmc-launcher::launcher.field.title') }}</label>
+          <input
+            class="form-control"
+            name="title"
+            value="{{ editing ? announcement.title : '' }}"
+            maxlength="120"
+            required
+          >
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>{{ trans('sitmc-launcher::launcher.field.content') }}</label>
+        <textarea class="form-control" name="content" rows="12" required>{{ editing ? announcement.content : '' }}</textarea>
+        <small class="form-text text-muted">
+          {{ trans('sitmc-launcher::launcher.field.content-hint') }}
+        </small>
+      </div>
+
+      <div class="form-group">
+        <label>{{ trans('sitmc-launcher::launcher.field.summary') }}</label>
+        <textarea class="form-control" name="summary" rows="2" maxlength="300">{{ editing ? announcement.summary : '' }}</textarea>
+        <small class="form-text text-muted">
+          {{ trans('sitmc-launcher::launcher.field.summary-hint') }}
+        </small>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group col-md-3">
+          <label>{{ trans('sitmc-launcher::launcher.field.type') }}</label>
+          <select class="form-control" name="type">
+            {% for type in ['modal', 'notification'] %}
+              <option
+                value="{{ type }}"
+                {% if (editing and announcement.type == type) or (not editing and type == 'notification') %}selected{% endif %}
+              >
+                {{ trans('sitmc-launcher::launcher.type.' ~ type) }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group col-md-3">
+          <label>{{ trans('sitmc-launcher::launcher.field.priority') }}</label>
+          <select class="form-control" name="priority">
+            {% for priority in ['low', 'normal', 'high', 'critical'] %}
+              <option
+                value="{{ priority }}"
+                {% if (editing and announcement.priority == priority) or (not editing and priority == 'normal') %}selected{% endif %}
+              >
+                {{ trans('sitmc-launcher::launcher.priority.' ~ priority) }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group col-md-6">
+          <label>{{ trans('sitmc-launcher::launcher.field.action_url') }}</label>
+          <input
+            class="form-control"
+            name="action_url"
+            value="{{ editing ? announcement.action_url : '' }}"
+            placeholder="https://skin.sitmc.club/news/1"
+          >
+          <small class="form-text text-muted">
+            {{ trans('sitmc-launcher::launcher.field.action_url-hint') }}
+          </small>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group col-md-4">
+          <label>{{ trans('sitmc-launcher::launcher.field.starts_at') }}</label>
+          <input
+            class="form-control"
+            type="datetime-local"
+            name="starts_at"
+            value="{{ editing ? announcement.starts_at_input : nowInput }}"
+            required
+          >
+        </div>
+        <div class="form-group col-md-4">
+          <label>{{ trans('sitmc-launcher::launcher.field.ends_at') }}</label>
+          <input
+            class="form-control"
+            type="datetime-local"
+            name="ends_at"
+            value="{{ editing ? announcement.ends_at_input : '' }}"
+          >
+          <small class="form-text text-muted">
+            {{ trans('sitmc-launcher::launcher.field.ends_at-hint') }}
+          </small>
+        </div>
+        <div class="form-group col-md-4">
+          <label>{{ trans('sitmc-launcher::launcher.field.published_at') }}</label>
+          <input
+            class="form-control"
+            type="datetime-local"
+            name="published_at"
+            value="{{ editing ? announcement.published_at_input : nowInput }}"
+            required
+          >
+          <small class="form-text text-muted">
+            {{ trans('sitmc-launcher::launcher.field.published_at-hint') }}
+          </small>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group col-md-8">
+          <label>{{ trans('sitmc-launcher::launcher.field.action_label') }}</label>
+          <input
+            class="form-control"
+            name="action_label"
+            value="{{ editing ? announcement.action_label : '' }}"
+            maxlength="80"
+          >
+        </div>
+        <div class="form-group col-md-4">
+          <div class="form-check mt-4">
+            <input
+              id="field-enabled"
+              class="form-check-input"
+              type="checkbox"
+              name="enabled"
+              value="1"
+              {% if not editing or announcement.enabled %}checked{% endif %}
+            >
+            <label class="form-check-label" for="field-enabled">
+              {{ trans('sitmc-launcher::launcher.announcements.enabled') }}
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-footer">
+      <button class="btn btn-primary" type="submit">
+        {{ trans('sitmc-launcher::launcher.action.save') }}
+      </button>
+      <a class="btn btn-default float-right" href="{{ route('sitmc-launcher.admin.announcements.index') }}">
+        {{ trans('sitmc-launcher::launcher.action.back') }}
+      </a>
+    </div>
+  </form>
+{% endblock %}
