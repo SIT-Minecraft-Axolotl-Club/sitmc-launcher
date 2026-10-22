@@ -31,7 +31,7 @@ final class PackStreamResponse extends Response
         ]);
     }
 
-    public function sendContent()
+    public function sendContent(): static
     {
         $handle = fopen($this->path, 'rb');
 
