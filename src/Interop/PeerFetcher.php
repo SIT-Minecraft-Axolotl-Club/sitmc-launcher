@@ -15,6 +15,8 @@ final class PeerFetcher
 {
     private const MAX_REDIRECTS = 3;
 
+    private const FALLBACK_PATH = '/api/launcher/interop/v1/site';
+
     public function __construct(
         private int $timeoutSeconds = 15,
         private int $attempts = 3,
@@ -30,6 +32,29 @@ final class PeerFetcher
      * @return array{status: ?int, body: ?string, etag: ?string, error: ?string}
      */
     public function get(string $url, ?string $etag = null): array
+    {
+        $result = $this->fetch($url, $etag);
+
+        // Some Nginx setups serve the well-known path through a dotfile 404
+        // rule even though the plugin endpoint behind it works. Fall back to
+        // the plugin-visible mirror, which returns the exact same document.
+        if (
+            $this->isWellKnown($url)
+            && (
+                in_array($result['status'], [403, 404], true)
+                || in_array($result['error'], ['peer-http-403', 'peer-http-404'], true)
+            )
+        ) {
+            return $this->fetch($this->fallbackUrl($url), $etag);
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return array{status: ?int, body: ?string, etag: ?string, error: ?string}
+     */
+    private function fetch(string $url, ?string $etag = null): array
     {
         $url = InteropRules::publicHttpsUrl($url);
 
@@ -102,6 +127,25 @@ final class PeerFetcher
             'etag' => null,
             'error' => $error ?? 'peer-unreachable',
         ];
+    }
+
+    private function isWellKnown(string $url): bool
+    {
+        $path = parse_url($url, PHP_URL_PATH);
+
+        return is_string($path) && $path === InteropRules::WELL_KNOWN_PATH;
+    }
+
+    private function fallbackUrl(string $url): string
+    {
+        $host = parse_url($url, PHP_URL_HOST);
+        $port = parse_url($url, PHP_URL_PORT);
+
+        if (! is_string($host) || $host === '') {
+            return $url;
+        }
+
+        return 'https://'.$host.($port === null ? '' : ':'.$port).self::FALLBACK_PATH;
     }
 
     /**
