@@ -306,6 +306,75 @@ final class InteropRepository
         return null;
     }
 
+    public function peerByDomain(string $domain): ?array
+    {
+        $domain = InteropRules::host($domain);
+
+        if ($domain === null) {
+            return null;
+        }
+
+        foreach ($this->peers() as $peer) {
+            if (InteropRules::host(parse_url((string) $peer['origin'], PHP_URL_HOST)) === $domain) {
+                return $peer;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Replace a temporary/pending site id with the id advertised by the peer.
+     * Returns false when the new id is already used, so the caller can keep the
+     * old row and surface a diagnostic instead of merging two different sites.
+     */
+    public function adoptPeerIdentity(
+        string $oldSiteId,
+        string $newSiteId,
+        ?string $name = null,
+        ?string $description = null
+    ): bool {
+        if ($oldSiteId === $newSiteId) {
+            return true;
+        }
+
+        if (
+            DB::table(LauncherSchema::INTEROP_PEERS)->where('site_id', $newSiteId)->exists()
+            || DB::table(LauncherSchema::INTEROP_SNAPSHOTS)->where('site_id', $newSiteId)->exists()
+        ) {
+            return false;
+        }
+
+        return DB::transaction(function () use ($oldSiteId, $newSiteId, $name, $description): bool {
+            $peer = DB::table(LauncherSchema::INTEROP_PEERS)->where('site_id', $oldSiteId)->first();
+
+            if ($peer === null) {
+                return false;
+            }
+
+            $payload = [
+                'site_id' => $newSiteId,
+                'updated_at' => Carbon::now(),
+            ];
+
+            if ($name !== null) {
+                $payload['name'] = $name;
+            }
+
+            if ($description !== null) {
+                $payload['description'] = $description;
+            }
+
+            DB::table(LauncherSchema::INTEROP_PEERS)->where('site_id', $oldSiteId)->update($payload);
+            DB::table(LauncherSchema::INTEROP_SNAPSHOTS)->where('site_id', $oldSiteId)->update([
+                'site_id' => $newSiteId,
+                'updated_at' => Carbon::now(),
+            ]);
+
+            return true;
+        });
+    }
+
     /**
      * @param  array<string, mixed>  $values
      */

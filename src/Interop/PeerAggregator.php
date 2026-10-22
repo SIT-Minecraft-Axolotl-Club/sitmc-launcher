@@ -262,6 +262,40 @@ final class PeerAggregator
             return ['status' => 'failed', 'siteId' => $siteId, 'error' => 'peer-shape-invalid'];
         }
 
+        $site = is_array($document['site'] ?? null) ? $document['site'] : [];
+        $advertisedId = InteropRules::id($site['id'] ?? null);
+
+        if ($advertisedId === null) {
+            $this->repository->markFailure($siteId, 'peer-shape-invalid');
+
+            return ['status' => 'failed', 'siteId' => $siteId, 'error' => 'peer-shape-invalid'];
+        }
+
+        $settings = $this->repository->settings();
+        $peerDomain = InteropRules::host(parse_url($origin, PHP_URL_HOST));
+
+        if (
+            $advertisedId === $settings['site_id']
+            || ($settings['site_domain'] !== null && $peerDomain === $settings['site_domain'])
+        ) {
+            $this->repository->markFailure($siteId, 'peer-self');
+
+            return ['status' => 'failed', 'siteId' => $siteId, 'error' => 'peer-self'];
+        }
+
+        if ($advertisedId !== $siteId) {
+            $name = InteropRules::text($site['name'] ?? null, 128);
+            $description = InteropRules::text($site['description'] ?? null, 2000);
+
+            if (! $this->repository->adoptPeerIdentity($siteId, $advertisedId, $name, $description)) {
+                $this->repository->markFailure($siteId, 'peer-site-id-collision');
+
+                return ['status' => 'failed', 'siteId' => $siteId, 'error' => 'peer-site-id-collision'];
+            }
+
+            $siteId = $advertisedId;
+        }
+
         $encoded = InteropRules::encode($document);
 
         if (strlen($encoded) > InteropRules::MAX_PEER_BYTES) {

@@ -36,17 +36,29 @@
           </h3>
         </div>
         <div class="card-body">
-          <div class="form-group">
-            <label>{{ trans('sitmc-launcher::launcher.interop.field.site_id') }}</label>
-            {% if peer %}
-              <input class="form-control" value="{{ peer.site_id }}" disabled>
-            {% else %}
-              <input class="form-control" name="site_id" value="" placeholder="yda">
-              <small class="form-text text-muted">
-                {{ trans('sitmc-launcher::launcher.interop.field.site_id-hint') }}
-              </small>
+          {% if peer %}
+            <div class="form-row">
+              <div class="form-group col-md-6">
+                <label>{{ trans('sitmc-launcher::launcher.interop.field.site_id') }}</label>
+                <input class="form-control" value="{{ peer.site_id }}" readonly>
+              </div>
+              <div class="form-group col-md-6">
+                <label>{{ trans('sitmc-launcher::launcher.interop.field.site_name') }}</label>
+                <input class="form-control" value="{{ peer.name }}" readonly>
+              </div>
+            </div>
+
+            {% if peer.description %}
+              <div class="form-group">
+                <label>{{ trans('sitmc-launcher::launcher.interop.field.description') }}</label>
+                <input class="form-control" value="{{ peer.description }}" readonly>
+              </div>
             {% endif %}
-          </div>
+          {% else %}
+            <div class="callout callout-info py-2">
+              <span class="small">{{ trans('sitmc-launcher::launcher.interop.peer.auto-hint') }}</span>
+            </div>
+          {% endif %}
 
           <div class="form-group">
             <label>{{ trans('sitmc-launcher::launcher.interop.field.domain') }}</label>
@@ -58,30 +70,6 @@
             >
             <small class="form-text text-muted">
               {{ trans('sitmc-launcher::launcher.interop.field.domain-hint') }}
-            </small>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group col-md-6">
-              <label>{{ trans('sitmc-launcher::launcher.field.name') }}</label>
-              <input class="form-control" name="name" value="{{ peer ? peer.name : '' }}">
-            </div>
-            <div class="form-group col-md-6">
-              <label>{{ trans('sitmc-launcher::launcher.interop.field.description') }}</label>
-              <input class="form-control" name="description" value="{{ peer ? peer.description : '' }}">
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>{{ trans('sitmc-launcher::launcher.interop.field.manifest_url') }}</label>
-            <input
-              class="form-control"
-              name="manifest_url"
-              value="{{ peer ? peer.manifest_url : '' }}"
-              placeholder="https://mc.yudream.app/.well-known/mc-interop-v1.json"
-            >
-            <small class="form-text text-muted">
-              {{ trans('sitmc-launcher::launcher.interop.field.manifest_url-hint') }}
             </small>
           </div>
 

@@ -18,6 +18,7 @@ use SITMinecraft\Launcher\Http\Controllers\UpdateController;
 use SITMinecraft\Launcher\Interop\InteropRepository;
 use SITMinecraft\Launcher\Interop\InteropRules;
 use SITMinecraft\Launcher\Interop\PeerAggregator;
+use SITMinecraft\Launcher\Interop\PeerDiscovery;
 use SITMinecraft\Launcher\Interop\PeerFetcher;
 use SITMinecraft\Launcher\Interop\SiteDocumentService;
 use SITMinecraft\Launcher\Manifest\PackStore;
@@ -60,6 +61,10 @@ return function ($plugin) {
 
     app()->singleton(PeerAggregator::class, static fn ($app) => new PeerAggregator(
         $app->make(InteropRepository::class),
+        $app->make(PeerFetcher::class)
+    ));
+
+    app()->singleton(PeerDiscovery::class, static fn ($app) => new PeerDiscovery(
         $app->make(PeerFetcher::class)
     ));
 

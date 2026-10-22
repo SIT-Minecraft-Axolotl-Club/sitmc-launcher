@@ -329,6 +329,12 @@ final class SiteDocumentBuilder
                 continue;
             }
 
+            // Placeholder rows are kept private until the first successful pull
+            // resolves the peer's real site id.
+            if (str_starts_with((string) ($peer['site_id'] ?? ''), 'pending-')) {
+                continue;
+            }
+
             $peerId = InteropRules::id($peer['site_id'] ?? ($peer['siteId'] ?? null));
             $domain = InteropRules::host($peer['domain'] ?? null)
                 ?? InteropRules::host(parse_url((string) ($peer['origin'] ?? ''), PHP_URL_HOST));

@@ -266,7 +266,11 @@
             {% for peer in peers %}
               <tr>
                 <td>
-                  <code>{{ peer.site_id }}</code>
+                  {% if peer.site_id starts with 'pending-' %}
+                    <span class="badge bg-secondary">{{ trans('sitmc-launcher::launcher.interop.peers.pending') }}</span>
+                  {% else %}
+                    <code>{{ peer.site_id }}</code>
+                  {% endif %}
                   <div class="small text-muted">
                     {{ peer.name ?: '—' }}{% if peer.description %} · {{ peer.description }}{% endif %}
                   </div>

@@ -11,6 +11,7 @@ use Illuminate\View\View;
 use SITMinecraft\Launcher\Interop\InteropRepository;
 use SITMinecraft\Launcher\Interop\InteropRules;
 use SITMinecraft\Launcher\Interop\PeerAggregator;
+use SITMinecraft\Launcher\Interop\PeerDiscovery;
 use SITMinecraft\Launcher\Interop\SiteDocumentService;
 
 /**
@@ -24,6 +25,7 @@ final class InteropController
     public function __construct(
         private InteropRepository $repository,
         private PeerAggregator $aggregator,
+        private PeerDiscovery $discovery,
         private SiteDocumentService $documents,
     ) {}
 
@@ -183,23 +185,58 @@ final class InteropController
     public function storePeer(Request $request): RedirectResponse
     {
         $values = $request->validate([
-            'site_id' => ['required', 'string', 'max:128', 'regex:/^[A-Za-z0-9._-]+$/'],
-            'name' => ['nullable', 'string', 'max:128'],
-            'description' => ['nullable', 'string', 'max:2000'],
             'domain' => ['required', 'string', 'max:253'],
-            'manifest_url' => ['nullable', 'string', 'max:512'],
             'enabled' => ['nullable', 'boolean'],
         ]);
 
-        $siteId = (string) $values['site_id'];
+        $domain = InteropRules::host((string) $values['domain']);
 
-        if ($this->repository->peer($siteId) !== null) {
+        if ($domain === null) {
             throw ValidationException::withMessages([
-                'site_id' => trans('sitmc-launcher::launcher.interop.problem.peer-site-id-taken'),
+                'domain' => trans('sitmc-launcher::launcher.interop.problem.peer-domain-invalid'),
             ]);
         }
 
-        $this->repository->savePeer($this->peerValues($values, $siteId));
+        $enabled = (bool) ($values['enabled'] ?? true);
+        $settings = $this->repository->settings();
+
+        if ($settings['site_domain'] !== null && $domain === $settings['site_domain']) {
+            throw ValidationException::withMessages([
+                'domain' => trans('sitmc-launcher::launcher.interop.problem.peer-self'),
+            ]);
+        }
+
+        if ($this->repository->peerByDomain($domain) !== null) {
+            throw ValidationException::withMessages([
+                'domain' => trans('sitmc-launcher::launcher.interop.problem.peer-domain-taken'),
+            ]);
+        }
+
+        $discovered = $this->discovery->discover($domain);
+
+        if (! ($discovered['ok'] ?? false)) {
+            $this->saveOfflinePeer($domain, $enabled);
+
+            return redirect()
+                ->route('sitmc-launcher.admin.interop.index')
+                ->with('sitmc_launcher_status', trans('sitmc-launcher::launcher.interop.status.peer-created-offline'));
+        }
+
+        $siteId = (string) $discovered['site_id'];
+
+        if ($siteId === $settings['site_id']) {
+            throw ValidationException::withMessages([
+                'domain' => trans('sitmc-launcher::launcher.interop.problem.peer-self'),
+            ]);
+        }
+
+        if ($this->repository->peer($siteId) !== null) {
+            throw ValidationException::withMessages([
+                'domain' => trans('sitmc-launcher::launcher.interop.problem.peer-site-id-taken'),
+            ]);
+        }
+
+        $this->saveDiscoveredPeer($discovered, $enabled);
 
         return redirect()
             ->route('sitmc-launcher.admin.interop.index')
@@ -208,19 +245,79 @@ final class InteropController
 
     public function updatePeer(Request $request, string $siteId): RedirectResponse
     {
-        if ($this->repository->peer($siteId) === null) {
+        $peer = $this->repository->peer($siteId);
+
+        if ($peer === null) {
             abort(404);
         }
 
         $values = $request->validate([
-            'name' => ['nullable', 'string', 'max:128'],
-            'description' => ['nullable', 'string', 'max:2000'],
             'domain' => ['required', 'string', 'max:253'],
-            'manifest_url' => ['nullable', 'string', 'max:512'],
             'enabled' => ['nullable', 'boolean'],
         ]);
 
-        $this->repository->savePeer($this->peerValues($values, $siteId));
+        $domain = InteropRules::host((string) $values['domain']);
+
+        if ($domain === null) {
+            throw ValidationException::withMessages([
+                'domain' => trans('sitmc-launcher::launcher.interop.problem.peer-domain-invalid'),
+            ]);
+        }
+
+        $enabled = (bool) ($values['enabled'] ?? false);
+        $currentDomain = InteropRules::host(parse_url((string) $peer['origin'], PHP_URL_HOST));
+
+        // Toggling "enabled" must not depend on the peer being online.
+        if ($domain === $currentDomain) {
+            $this->repository->savePeer([
+                'site_id' => $siteId,
+                'name' => $peer['name'],
+                'description' => $peer['description'],
+                'origin' => $peer['origin'],
+                'manifest_url' => $peer['manifest_url'],
+                'enabled' => $enabled,
+            ]);
+
+            return redirect()
+                ->route('sitmc-launcher.admin.interop.index')
+                ->with('sitmc_launcher_status', trans('sitmc-launcher::launcher.interop.status.peer-saved'));
+        }
+
+        $settings = $this->repository->settings();
+
+        if ($settings['site_domain'] !== null && $domain === $settings['site_domain']) {
+            throw ValidationException::withMessages([
+                'domain' => trans('sitmc-launcher::launcher.interop.problem.peer-self'),
+            ]);
+        }
+
+        $discovered = $this->discovery->discover($domain);
+
+        if (! ($discovered['ok'] ?? false)) {
+            $this->saveOfflinePeer($domain, $enabled, $siteId);
+
+            return redirect()
+                ->route('sitmc-launcher.admin.interop.index')
+                ->with('sitmc_launcher_status', trans('sitmc-launcher::launcher.interop.status.peer-saved-offline'));
+        }
+
+        $newSiteId = (string) $discovered['site_id'];
+
+        if ($newSiteId === $settings['site_id']) {
+            throw ValidationException::withMessages([
+                'domain' => trans('sitmc-launcher::launcher.interop.problem.peer-self'),
+            ]);
+        }
+
+        if ($newSiteId !== $siteId) {
+            if (! $this->repository->adoptPeerIdentity($siteId, $newSiteId, $discovered['name'], $discovered['description'])) {
+                throw ValidationException::withMessages([
+                    'domain' => trans('sitmc-launcher::launcher.interop.problem.peer-site-id-taken'),
+                ]);
+            }
+        }
+
+        $this->saveDiscoveredPeer($discovered, $enabled);
 
         return redirect()
             ->route('sitmc-launcher.admin.interop.index')
@@ -294,35 +391,64 @@ final class InteropController
     }
 
     /**
-     * @param  array<string, mixed>  $values
-     * @return array<string, mixed>
+     * Save a domain without a successful pull. The placeholder id is replaced
+     * by the peer's real site id on the first successful sync.
      */
-    private function peerValues(array $values, string $siteId): array    {
-        $domain = InteropRules::host($values['domain'] ?? null);
+    private function saveOfflinePeer(string $domain, bool $enabled, ?string $oldSiteId = null): string
+    {
+        $base = $this->discovery->pendingId($domain);
+        $pending = $base;
+        $counter = 1;
 
-        if ($domain === null) {
-            throw ValidationException::withMessages([
-                'domain' => trans('sitmc-launcher::launcher.interop.problem.peer-domain-invalid'),
-            ]);
+        while (($existing = $this->repository->peer($pending)) !== null && $existing['site_id'] !== $oldSiteId) {
+            $pending = $base.'-'.$counter++;
         }
 
-        $origin = 'https://'.$domain;
-        $manifestUrl = $this->textOrNull($values['manifest_url'] ?? null);
-
-        if ($manifestUrl !== null && InteropRules::publicHttpsUrl($manifestUrl) === null) {
-            throw ValidationException::withMessages([
-                'manifest_url' => trans('sitmc-launcher::launcher.interop.problem.peer-manifest-url-invalid'),
-            ]);
+        if ($oldSiteId !== null && $oldSiteId !== $pending) {
+            if (! $this->repository->adoptPeerIdentity($oldSiteId, $pending, $domain, null)) {
+                throw ValidationException::withMessages([
+                    'domain' => trans('sitmc-launcher::launcher.interop.problem.peer-site-id-taken'),
+                ]);
+            }
         }
 
-        return [
+        $this->repository->savePeer([
+            'site_id' => $pending,
+            'name' => $domain,
+            'description' => null,
+            'origin' => 'https://'.$domain,
+            'manifest_url' => 'https://'.$domain.InteropRules::WELL_KNOWN_PATH,
+            'enabled' => $enabled,
+        ]);
+
+        $this->repository->deleteSnapshot($pending);
+
+        return $pending;
+    }
+
+    /**
+     * @param  array<string, mixed>  $discovered
+     */
+    private function saveDiscoveredPeer(array $discovered, bool $enabled): void
+    {
+        $siteId = (string) $discovered['site_id'];
+
+        $this->repository->savePeer([
             'site_id' => $siteId,
-            'name' => $this->textOrNull($values['name'] ?? null),
-            'description' => $this->textOrNull($values['description'] ?? null),
-            'origin' => $origin,
-            'manifest_url' => $manifestUrl ?? $origin.InteropRules::WELL_KNOWN_PATH,
-            'enabled' => (bool) ($values['enabled'] ?? false),
-        ];
+            'name' => $discovered['name'] ?? $siteId,
+            'description' => $discovered['description'] ?? null,
+            'origin' => $discovered['origin'],
+            'manifest_url' => $discovered['manifest_url'],
+            'enabled' => $enabled,
+        ]);
+
+        $this->repository->storeSnapshot(
+            $siteId,
+            (string) $discovered['origin'],
+            $discovered['etag'] ?? null,
+            InteropRules::encode($discovered['document']),
+            time()
+        );
     }
 
     /**
