@@ -173,7 +173,7 @@ GET {origin}/.well-known/mc-interop-v1.json        → SiteDocument（200）
 
 | 字段 | 规则 |
 | --- | --- |
-| `id` | 站内稳定 ID（string），**站点内唯一**；无 `artifact` 的纯服务器条目用它表示服务器标识。 |
+| `id` | 站内稳定 ID（string），**站点内唯一**；无 `artifact` 的纯服务器条目用它表示服务器标识。合并出口中的友站条目统一加 `{siteId}:` 前缀（如 `ysumc:survival`），本家条目保持原 id；冒号保留给跨站命名空间。 |
 | `name` | 必填，展示名。 |
 | `summary` | 可选，简短说明。 |
 | `revision` | 有 `artifact` 时必填，单调递增整数；同包同 revision 内容变化必须 +1。无 `artifact` 时省略。 |
@@ -192,7 +192,8 @@ GET {origin}/.well-known/mc-interop-v1.json        → SiteDocument（200）
 | `source` | 友站条目才有：`{siteId, domain, stale?}`；本家条目省略。 |
 
 - 一个条目就是一个**实例**：一个整合包（可省略）+ 一个服务器 IP + 版本。同一整合包
-  需要出现在多个服务器时，使用多个条目并保证 `id` 唯一。
+  需要出现在多个服务器时，使用多个条目并保证站点内 `id` 唯一；合并出口通过
+  `{siteId}:` 前缀保证全局唯一。
 - 目录**只含包级/版本级元数据**，不含文件级 entry 清单——文件级细节在 artifact 内部
   （mrpack index 等）或分发后端端点里，出口保持轻量。
 - 不再有 `version`、`channel`、`flags`、`releaseNotes`、`icon` 等字段；当前 revision 就是
@@ -292,8 +293,8 @@ GET {origin}/.well-known/mc-interop-v1.json        → SiteDocument（200）
   `source: {"siteId": "...", "domain": "..."}`；快照过期时**才**追加 `"stale": true`，
   正常快照不输出 `stale`。本家自有条目省略 `source`。前端可据此分组展示"友站内容"。
 - **命名空间**：本站内部资源键 = `domain + "/" + id`；对外出口仍是一个扁平
-  `packs[]`，消费方无感知。外来条目 id 与本家冲突时，本家丢弃该外来条目并记诊断，
-  避免服务器绑定指向不明确。
+  `packs[]`，消费方无感知。外来条目 id 统一加 `{siteId}:` 前缀（如 `ysumc:survival`），
+  因此不同站点可以发布同名实例而不会互相覆盖；本家条目保持原 id。
 - **原样合并**：外来条目已经自带 `server`，合并时不需要再重写绑定；`artifact.url`
   保持指向源站绝对 URL，完整性以 hash 校验为准。
 - **门控**：v1 出口匿名可读，不定义 `auth` 字段，也不采入需要认证的友站内容；门控
@@ -475,7 +476,7 @@ v1 不再做「周目 / 发布控制台」双源聚合。站点在生成条目�
       "type": "object",
       "required": ["id", "name", "gameVersion", "loader", "server"],
       "properties": {
-        "id": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,128}$" },
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]{1,257}$" },
         "name": { "type": "string", "minLength": 1, "maxLength": 128 },
         "summary": { "type": "string", "maxLength": 2000 },
         "source": { "$ref": "#/definitions/source" },

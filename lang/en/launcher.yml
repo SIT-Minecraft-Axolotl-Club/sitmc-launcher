@@ -376,7 +376,7 @@ interop:
     peer-packs-missing: "The peer document has no packs array and was skipped."
     peer-entry-invalid: "A peer entry has an invalid shape and was skipped."
     peer-entry-id-invalid: "A peer entry id is invalid and was skipped."
-    peer-entry-id-collision: "A peer entry collides with this site or an earlier entry and was dropped."
+    peer-entry-id-collision: "A peer document contains a duplicate id; the later entry was dropped."
     peer-entry-server-missing: "A peer entry has no server address and was dropped."
     peer-entry-game-version-missing: "A peer entry has no game version and was dropped."
     peer-entry-loader-invalid: "A peer entry uses an unsupported loader and was dropped."

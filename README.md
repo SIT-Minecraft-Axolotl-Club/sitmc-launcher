@@ -81,6 +81,7 @@ GET /api/launcher/interop/v1/friends   （同一个响应，兼容旧地址）
 - 只有至少有一个可用实例的友站才会出现在 `sites[]`；没有实例的友站不占位。
 - `instances[]` 里的字段沿用 manifest：`id / name / description / icon_url / sort / revision / minecraft / pack / server / required`。
 - `sort` 由本站按 `id` 生成（每个友站 1..n），不采用友站自己的排序值。
+- 实例 `id` 带来源前缀，例如 `yda:pixelsit`，和主清单一致。
 - 实例不再重复带 `source`，来源就是它所在的 `sites[]` 分组。
 - `stale: true` 表示该友站这次拉取失败，`instances` 来自上一次成功快照。
 - 友站聚合关闭或没有快照时，`sites` 是空数组。
@@ -103,7 +104,7 @@ GET /api/launcher/interop/v1/friends   （同一个响应，兼容旧地址）
       "stale": false,
       "instances": [
         {
-          "id": "pixelsit",
+          "id": "yda:pixelsit",
           "name": "PixelSIT",
           "description": "余梦的整合包服务器",
           "icon_url": null,
@@ -134,7 +135,7 @@ GET /api/launcher/interop/v1/friends   （同一个响应，兼容旧地址）
       "stale": false,
       "instances": [
         {
-          "id": "other-pack",
+          "id": "another:other-pack",
           "name": "另一个实例",
           "description": null,
           "icon_url": null,
@@ -166,7 +167,8 @@ GET /api/launcher/interop/v1/friends   （同一个响应，兼容旧地址）
 - 后台「友站」里可以点「同步」或「同步全部」手动触发。
 - 友站失败时沿用最近一次成功快照，外来条目带 `source.stale: true`，**永不静默清空**。
 - 外来条目带 `source{siteId, domain, stale?}`；本家条目不带。
-- 友站条目已自带 `server`，合并时不再重写绑定；与本家或已采入条目 ID 冲突时丢弃并记诊断。
+- 外来条目的 `id` 会加来源前缀，例如 `ysumc:survival`；本站自己的 `survival` 保持不变，因此两边同名实例可以同时存在。
+- 友站条目已自带 `server`，合并时不再重写绑定；同一友站文档内重复的 `id` 仍会丢弃并记诊断。
 - 公开请求发现快照过期时，在响应结束后触发一次同步，不阻塞启动器；后台「同步」/「同步全部」也可手动触发。
 
 ### 定时同步

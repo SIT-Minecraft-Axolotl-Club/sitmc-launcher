@@ -80,6 +80,11 @@ final class PeerMerger
                     continue;
                 }
 
+                // Namespace every foreign id with its source site. This is
+                // what lets two sites both publish `survival` without losing
+                // one of them; the launcher sees `ysumc:survival`.
+                $entry['id'] = $siteId.':'.$entry['id'];
+
                 if (isset($seen[$entry['id']])) {
                     $this->diagnose('peer-entry-id-collision', $siteId, $entry['id']);
                     continue;

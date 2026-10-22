@@ -376,7 +376,7 @@ interop:
     peer-packs-missing: "友站文档缺少 packs 数组，已跳过。"
     peer-entry-invalid: "友站条目结构不合法，已跳过。"
     peer-entry-id-invalid: "友站条目 id 不合法，已跳过。"
-    peer-entry-id-collision: "友站条目与本站或已采入条目 ID 冲突，已丢弃。"
+    peer-entry-id-collision: "同一友站文档内出现重复 id，后一条已丢弃。"
     peer-entry-server-missing: "友站条目没有服务器地址，已丢弃。"
     peer-entry-game-version-missing: "友站条目缺少游戏版本，已丢弃。"
     peer-entry-loader-invalid: "友站条目使用了不支持的加载器，已丢弃。"
