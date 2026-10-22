@@ -54,7 +54,7 @@
             </div>
             <div class="form-group col-md-6">
               <label>{{ trans('sitmc-launcher::launcher.interop.field.site_name') }}</label>
-              <div class="form-control-plaintext">{{ settings.site_name }}</div>
+              <input class="form-control" value="{{ settings.site_name }}" readonly>
               <small class="form-text text-muted">{{ trans('sitmc-launcher::launcher.interop.field.site_name-hint') }}</small>
             </div>
           </div>
@@ -108,22 +108,6 @@
           </button>
         </div>
       </form>
-
-      <details class="mt-2">
-        <summary class="text-muted small">{{ trans('sitmc-launcher::launcher.interop.aggregation.cron') }}</summary>
-        <p class="small text-muted mt-2 mb-1">{{ trans('sitmc-launcher::launcher.interop.aggregation.cron-hint') }}</p>
-        <pre class="small mb-2"><code>{{ cronCommand }}</code></pre>
-        <form
-          method="post"
-          action="{{ route('sitmc-launcher.admin.interop.sync-token') }}"
-          onsubmit="return confirm('{{ trans('sitmc-launcher::launcher.interop.aggregation.cron-confirm') }}')"
-        >
-          {{ csrf_field() }}
-          <button class="btn btn-sm btn-default" type="submit">
-            {{ trans('sitmc-launcher::launcher.interop.aggregation.cron-rotate') }}
-          </button>
-        </form>
-      </details>
     </div>
 
     <div class="col-md-5">
@@ -156,6 +140,26 @@
           {% endif %}
         </div>
       </div>
+
+      <div class="card card-secondary mt-3">
+        <div class="card-header">
+          <h3 class="card-title">{{ trans('sitmc-launcher::launcher.interop.aggregation.cron') }}</h3>
+        </div>
+        <div class="card-body">
+          <p class="small text-muted mb-2">{{ trans('sitmc-launcher::launcher.interop.aggregation.cron-hint') }}</p>
+          <pre class="mb-2 text-danger" style="white-space: pre-wrap; word-break: break-all;"><code class="text-danger">{{ cronCommand }}</code></pre>
+          <form
+            method="post"
+            action="{{ route('sitmc-launcher.admin.interop.sync-token') }}"
+            onsubmit="return confirm('{{ trans('sitmc-launcher::launcher.interop.aggregation.cron-confirm') }}')"
+          >
+            {{ csrf_field() }}
+            <button class="btn btn-sm btn-default" type="submit">
+              {{ trans('sitmc-launcher::launcher.interop.aggregation.cron-rotate') }}
+            </button>
+          </form>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -169,65 +173,69 @@
       {% if instances is empty %}
         <div class="callout callout-info mb-0">{{ trans('sitmc-launcher::launcher.interop.publications.empty') }}</div>
       {% else %}
-        <form method="post" action="{{ route('sitmc-launcher.admin.interop.publications') }}">
+        <form id="interop-publications-form" method="post" action="{{ route('sitmc-launcher.admin.interop.publications') }}">
           {{ csrf_field() }}
-          <table class="table table-hover mb-3">
-            <thead>
-              <tr>
-                <th style="width: 36px;"></th>
-                <th>{{ trans('sitmc-launcher::launcher.field.id') }}</th>
-                <th>{{ trans('sitmc-launcher::launcher.field.server_address') }}</th>
-                <th>{{ trans('sitmc-launcher::launcher.field.revision') }}</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for instance in instances %}
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead>
                 <tr>
-                  <td>
-                    <input
-                      class="form-check-input"
-                      type="checkbox"
-                      name="published[]"
-                      value="{{ instance.id }}"
-                      {% if instance.published %}checked{% endif %}
-                    >
-                  </td>
-                  <td>
-                    <code>{{ instance.id }}</code>
-                    <div class="small text-muted">{{ instance.name }}</div>
-                  </td>
-                  <td>
-                    {% if instance.has_server %}
-                      {{ instance.server_address }}{% if instance.server_port %}:{{ instance.server_port }}{% endif %}
-                    {% else %}
-                      <span class="badge bg-danger">{{ trans('sitmc-launcher::launcher.interop.publications.no-server') }}</span>
-                    {% endif %}
-                  </td>
-                  <td>
-                    {% if instance.current_pack %}
-                      {{ instance.revision }}
-                    {% elseif instance.has_packs %}
-                      <span class="badge bg-warning">{{ trans('sitmc-launcher::launcher.interop.publications.revision-missing') }}</span>
-                    {% else %}
-                      <span class="text-muted">{{ trans('sitmc-launcher::launcher.interop.publications.vanilla') }}</span>
-                    {% endif %}
-                  </td>
-                  <td class="text-right">
-                    <a
-                      class="btn btn-sm btn-default"
-                      href="{{ route('sitmc-launcher.admin.edit', {instanceId: instance.id}) }}"
-                    >
-                      {{ trans('sitmc-launcher::launcher.action.edit') }}
-                    </a>
-                  </td>
+                  <th style="width: 72px;">{{ trans('sitmc-launcher::launcher.interop.publications.listed') }}</th>
+                  <th>{{ trans('sitmc-launcher::launcher.field.id') }}</th>
+                  <th>{{ trans('sitmc-launcher::launcher.field.server_address') }}</th>
+                  <th>{{ trans('sitmc-launcher::launcher.field.revision') }}</th>
                 </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-          <button class="btn btn-primary" type="submit">
-            {{ trans('sitmc-launcher::launcher.interop.publications.save') }}
-          </button>
+              </thead>
+              <tbody>
+                {% for instance in instances %}
+                  <tr class="interop-publish-row{% if instance.published %} table-active{% endif %}">
+                    <td class="align-middle">
+                      <div class="custom-control custom-switch">
+                        <input
+                          class="custom-control-input interop-publish-box"
+                          type="checkbox"
+                          id="interop-publish-{{ instance.id }}"
+                          name="published[]"
+                          value="{{ instance.id }}"
+                          aria-label="{{ instance.name }}"
+                          {% if instance.published %}checked{% endif %}
+                        >
+                        <label class="custom-control-label" for="interop-publish-{{ instance.id }}"></label>
+                      </div>
+                    </td>
+                    <td class="align-middle">
+                      <code>{{ instance.id }}</code>
+                      <div class="small text-muted">{{ instance.name }}</div>
+                    </td>
+                    <td class="align-middle">
+                      {% if instance.has_server %}
+                        <span class="text-monospace">{{ instance.server_address }}{% if instance.server_port %}:{{ instance.server_port }}{% endif %}</span>
+                      {% else %}
+                        <span class="badge bg-danger">{{ trans('sitmc-launcher::launcher.interop.publications.no-server') }}</span>
+                      {% endif %}
+                    </td>
+                    <td class="align-middle">
+                      {% if instance.current_pack %}
+                        <span class="text-monospace">{{ instance.revision }}</span>
+                      {% elseif instance.has_packs %}
+                        <span class="badge bg-warning">{{ trans('sitmc-launcher::launcher.interop.publications.revision-missing') }}</span>
+                      {% else %}
+                        <span class="text-muted">{{ trans('sitmc-launcher::launcher.interop.publications.vanilla') }}</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="d-flex justify-content-between align-items-center mt-3">
+            <span id="interop-publish-status" class="small text-muted" aria-live="polite"></span>
+            <noscript>
+              <button class="btn btn-primary" type="submit">
+                {{ trans('sitmc-launcher::launcher.interop.publications.save') }}
+              </button>
+            </noscript>
+          </div>
         </form>
       {% endif %}
     </div>
@@ -324,4 +332,70 @@
       </form>
     </div>
   </div>
+
+  <script>
+    (function () {
+      var form = document.getElementById('interop-publications-form');
+      var boxes = Array.prototype.slice.call(document.querySelectorAll('.interop-publish-box'));
+      var status = document.getElementById('interop-publish-status');
+      var timer = null;
+      var messages = {
+        saving: '{{ trans('sitmc-launcher::launcher.interop.publications.saving')|e('js') }}',
+        saved: '{{ trans('sitmc-launcher::launcher.interop.publications.saved')|e('js') }}',
+        failed: '{{ trans('sitmc-launcher::launcher.interop.publications.save-failed')|e('js') }}'
+      };
+
+      function setStatus(text, className) {
+        if (!status) {
+          return;
+        }
+
+        status.textContent = text;
+        status.className = 'small ' + className;
+      }
+
+      function save() {
+        if (!form) {
+          return;
+        }
+
+        setStatus(messages.saving, 'text-muted');
+
+        fetch(form.action, {
+          method: 'POST',
+          body: new FormData(form),
+          credentials: 'same-origin',
+          headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        }).then(function (response) {
+          return response.json().then(function (data) {
+            return { response: response, data: data };
+          });
+        }).then(function (result) {
+          if (!result.response.ok || !result.data || !result.data.ok) {
+            throw new Error('save failed');
+          }
+
+          setStatus(messages.saved, 'text-success');
+        }).catch(function () {
+          setStatus(messages.failed, 'text-danger');
+        });
+      }
+
+      boxes.forEach(function (box) {
+        box.addEventListener('change', function () {
+          var row = box.closest('tr');
+
+          if (row) {
+            row.classList.toggle('table-active', box.checked);
+          }
+
+          clearTimeout(timer);
+          timer = setTimeout(save, 250);
+        });
+      });
+    })();
+  </script>
 {% endblock %}

@@ -292,6 +292,10 @@ interop:
     no-server: "No server address"
     vanilla: "Server only"
     revision-missing: "No current version"
+    listed: "Listed"
+    saving: "Saving…"
+    saved: "Saved"
+    save-failed: "Save failed; try again"
     save: "Save"
 
   peers:

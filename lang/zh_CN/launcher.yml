@@ -292,6 +292,10 @@ interop:
     no-server: "缺服务器地址"
     vanilla: "纯服务器"
     revision-missing: "缺当前版本"
+    listed: "上架"
+    saving: "保存中…"
+    saved: "已保存"
+    save-failed: "保存失败，请重试"
     save: "保存"
 
   peers:

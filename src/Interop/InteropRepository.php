@@ -36,6 +36,8 @@ final class InteropRepository
 
     private const SETTING_SYNC_TOKEN = 'interop_sync_token';
 
+    private const SETTING_TTL_MIGRATED = 'interop_peer_ttl_v2';
+
     private const SETTING_KEYS = [
         self::SETTING_SITE_ID,
         self::SETTING_SITE_DESCRIPTION,
@@ -43,6 +45,7 @@ final class InteropRepository
         self::SETTING_AGGREGATE,
         self::SETTING_PEER_TTL,
         self::SETTING_UPDATED_AT,
+        self::SETTING_TTL_MIGRATED,
     ];
 
     public function __construct()
@@ -69,6 +72,19 @@ final class InteropRepository
             ? trim((string) $stored[self::SETTING_SITE_DESCRIPTION])
             : self::siteDescription();
 
+        $peerTtl = max(60, (int) ($stored[self::SETTING_PEER_TTL] ?? 300));
+
+        // The first implementation defaulted to 900 seconds. Move that old
+        // default to 300 once; explicit non-900 choices are left untouched.
+        if (! $stored->has(self::SETTING_TTL_MIGRATED)) {
+            if ($peerTtl === 900) {
+                $peerTtl = 300;
+                $this->putSetting(self::SETTING_PEER_TTL, '300');
+            }
+
+            $this->putSetting(self::SETTING_TTL_MIGRATED, '1');
+        }
+
         return [
             'site_id' => $text(self::SETTING_SITE_ID) ?? self::DEFAULT_SITE_ID,
             // Read-only: the site name always comes from Blessing Skin itself.
@@ -76,7 +92,7 @@ final class InteropRepository
             'site_description' => $description,
             'site_domain' => $text(self::SETTING_SITE_DOMAIN),
             'aggregate' => ($stored[self::SETTING_AGGREGATE] ?? '1') !== '0',
-            'peer_ttl' => max(60, (int) ($stored[self::SETTING_PEER_TTL] ?? 300)),
+            'peer_ttl' => $peerTtl,
             'updated_at' => InteropRules::timestamp($stored[self::SETTING_UPDATED_AT] ?? null),
         ];
     }

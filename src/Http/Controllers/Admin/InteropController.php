@@ -2,6 +2,7 @@
 
 namespace SITMinecraft\Launcher\Http\Controllers\Admin;
 
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Lang;
@@ -104,7 +105,7 @@ final class InteropController
             ->with('sitmc_launcher_status', trans('sitmc-launcher::launcher.interop.status.settings-saved'));
     }
 
-    public function savePublications(Request $request): RedirectResponse
+    public function savePublications(Request $request): JsonResponse|RedirectResponse
     {
         $values = $request->validate([
             'published' => ['nullable', 'array'],
@@ -126,6 +127,10 @@ final class InteropController
         }
 
         $this->repository->savePublications($selected);
+
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => true, 'count' => count($selected)]);
+        }
 
         return redirect()
             ->route('sitmc-launcher.admin.interop.index')
