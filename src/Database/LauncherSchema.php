@@ -25,8 +25,31 @@ final class LauncherSchema
 
     public const RELEASES = 'sitmc_launcher_releases';
 
+    /**
+     * mc-interop v1 tables. They are additive: the legacy manifest keeps reading
+     * its own tables, and removing this plugin still removes everything.
+     */
+    public const INTEROP_PEERS = 'sitmc_launcher_interop_peers';
+
+    public const INTEROP_SNAPSHOTS = 'sitmc_launcher_interop_snapshots';
+
+    public const INTEROP_SERVERS = 'sitmc_launcher_interop_servers';
+
+    public const INTEROP_ENDPOINTS = 'sitmc_launcher_interop_endpoints';
+
+    /**
+     * The guard is per process: one request resolves both the legacy repository
+     * and the interop repository, so without it the same `hasTable` checks would
+     * run twice per request.
+     */
+    private static bool $installed = false;
+
     public static function install(): void
     {
+        if (self::$installed) {
+            return;
+        }
+
         if (! Schema::hasTable(self::INSTANCES)) {
             Schema::create(self::INSTANCES, static function (Blueprint $table): void {
                 $table->bigIncrements('id');
@@ -106,6 +129,86 @@ final class LauncherSchema
                 $table->index(['channel', 'enabled']);
             });
         }
+
+        if (! Schema::hasTable(self::INTEROP_PEERS)) {
+            Schema::create(self::INTEROP_PEERS, static function (Blueprint $table): void {
+                $table->bigIncrements('id');
+                $table->string('site_id', 64)->unique();
+                $table->string('name', 128)->nullable();
+                $table->text('description')->nullable();
+                $table->string('origin', 512);
+                $table->string('manifest_url', 512)->nullable();
+                $table->string('trust', 16)->default('linked');
+                $table->boolean('enabled')->default(true);
+                $table->timestamps();
+            });
+        }
+
+        if (! Schema::hasTable(self::INTEROP_SNAPSHOTS)) {
+            Schema::create(self::INTEROP_SNAPSHOTS, static function (Blueprint $table): void {
+                $table->string('site_id', 64)->primary();
+                $table->string('origin', 512);
+                $table->string('etag', 255)->nullable();
+                $table->string('manifest_version', 16)->nullable();
+                $table->longText('document')->nullable();
+                $table->timestamp('fetched_at')->nullable();
+                $table->boolean('stale')->default(true);
+                $table->string('last_error', 255)->nullable();
+                $table->timestamps();
+            });
+        }
+
+        if (! Schema::hasTable(self::INTEROP_SERVERS)) {
+            Schema::create(self::INTEROP_SERVERS, static function (Blueprint $table): void {
+                $table->string('instance_id', 64)->primary();
+                $table->string('update_policy', 16)->nullable();
+                $table->string('optional_pack_id', 64)->nullable();
+                $table->string('optional_pack_version', 64)->nullable();
+                $table->string('season_kind', 16)->nullable();
+                $table->string('season_pack_id', 64)->nullable();
+                $table->string('season_pack_version', 64)->nullable();
+                $table->string('season_game_version', 64)->nullable();
+                $table->string('season_loader', 32)->nullable();
+                $table->string('season_loader_version', 64)->nullable();
+                $table->string('season_id', 64)->nullable();
+                $table->string('season_name', 128)->nullable();
+                $table->boolean('enabled')->default(true);
+                $table->boolean('published')->default(false);
+                $table->timestamps();
+            });
+        }
+
+        // Additive columns for installations that already ran an older version
+        // of the plugin. Publication defaults to off: an instance must be
+        // explicitly selected before it appears in the unified exit.
+        if (Schema::hasTable(self::INTEROP_PEERS) && ! Schema::hasColumn(self::INTEROP_PEERS, 'description')) {
+            Schema::table(self::INTEROP_PEERS, static function (Blueprint $table): void {
+                $table->text('description')->nullable();
+            });
+        }
+
+        if (Schema::hasTable(self::INTEROP_SERVERS) && ! Schema::hasColumn(self::INTEROP_SERVERS, 'published')) {
+            Schema::table(self::INTEROP_SERVERS, static function (Blueprint $table): void {
+                $table->boolean('published')->default(false);
+            });
+        }
+
+        if (! Schema::hasTable(self::INTEROP_ENDPOINTS)) {
+            Schema::create(self::INTEROP_ENDPOINTS, static function (Blueprint $table): void {
+                $table->bigIncrements('id');
+                $table->string('instance_id', 64);
+                $table->string('name', 64)->nullable();
+                $table->string('address', 255);
+                $table->unsignedSmallInteger('port')->nullable();
+                $table->boolean('is_primary')->default(false);
+                $table->integer('sort')->default(0);
+                $table->timestamps();
+
+                $table->index('instance_id');
+            });
+        }
+
+        self::$installed = true;
     }
 
     /**
@@ -114,6 +217,12 @@ final class LauncherSchema
      */
     public static function uninstall(): void
     {
+        self::$installed = false;
+
+        Schema::dropIfExists(self::INTEROP_ENDPOINTS);
+        Schema::dropIfExists(self::INTEROP_SERVERS);
+        Schema::dropIfExists(self::INTEROP_SNAPSHOTS);
+        Schema::dropIfExists(self::INTEROP_PEERS);
         Schema::dropIfExists(self::RELEASES);
         Schema::dropIfExists(self::ANNOUNCEMENTS);
         Schema::dropIfExists(self::PACKS);

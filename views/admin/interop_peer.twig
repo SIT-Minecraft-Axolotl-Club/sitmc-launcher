@@ -1,0 +1,143 @@
+{% extends 'admin.base' %}
+
+{% block title %}
+  {{ peer ? trans('sitmc-launcher::launcher.interop.peer.edit-title', {id: peer.site_id}) : trans('sitmc-launcher::launcher.interop.peer.create-title') }}
+{% endblock %}
+
+{% block content %}
+  {% if status %}
+    <div class="callout callout-success">{{ status }}</div>
+  {% endif %}
+
+  {% if errors is defined and errors.any() %}
+    <div class="callout callout-danger">
+      <ul class="mb-0">
+        {% for message in errors.all() %}
+          <li>{{ message }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  <div class="row">
+    <div class="col-md-7">
+      <form
+        class="card card-primary"
+        method="post"
+        action="{{ peer ? route('sitmc-launcher.admin.interop.peers.update', {siteId: peer.site_id}) : route('sitmc-launcher.admin.interop.peers.store') }}"
+      >
+        {{ csrf_field() }}
+        {% if peer %}
+          {{ method_field('PUT') }}
+        {% endif %}
+        <div class="card-header">
+          <h3 class="card-title">
+            {{ peer ? trans('sitmc-launcher::launcher.interop.peer.edit-title', {id: peer.site_id}) : trans('sitmc-launcher::launcher.interop.peer.create-title') }}
+          </h3>
+        </div>
+        <div class="card-body">
+          <div class="form-group">
+            <label>{{ trans('sitmc-launcher::launcher.interop.field.site_id') }}</label>
+            {% if peer %}
+              <input class="form-control" value="{{ peer.site_id }}" disabled>
+            {% else %}
+              <input class="form-control" name="site_id" value="" placeholder="yda">
+              <small class="form-text text-muted">
+                {{ trans('sitmc-launcher::launcher.interop.field.site_id-hint') }}
+              </small>
+            {% endif %}
+          </div>
+
+          <div class="form-group">
+            <label>{{ trans('sitmc-launcher::launcher.interop.field.domain') }}</label>
+            <input
+              class="form-control"
+              name="domain"
+              value="{{ domain }}"
+              placeholder="mc.yudream.app"
+            >
+            <small class="form-text text-muted">
+              {{ trans('sitmc-launcher::launcher.interop.field.domain-hint') }}
+            </small>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group col-md-6">
+              <label>{{ trans('sitmc-launcher::launcher.field.name') }}</label>
+              <input class="form-control" name="name" value="{{ peer ? peer.name : '' }}">
+            </div>
+            <div class="form-group col-md-6">
+              <label>{{ trans('sitmc-launcher::launcher.interop.field.description') }}</label>
+              <input class="form-control" name="description" value="{{ peer ? peer.description : '' }}">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>{{ trans('sitmc-launcher::launcher.interop.field.manifest_url') }}</label>
+            <input
+              class="form-control"
+              name="manifest_url"
+              value="{{ peer ? peer.manifest_url : '' }}"
+              placeholder="https://mc.yudream.app/.well-known/mc-interop-v1.json"
+            >
+            <small class="form-text text-muted">
+              {{ trans('sitmc-launcher::launcher.interop.field.manifest_url-hint') }}
+            </small>
+          </div>
+
+          <div class="form-check">
+            <input type="hidden" name="enabled" value="0">
+            <input
+              id="peer-enabled"
+              class="form-check-input"
+              type="checkbox"
+              name="enabled"
+              value="1"
+              {% if peer is empty or peer.enabled %}checked{% endif %}
+            >
+            <label class="form-check-label" for="peer-enabled">
+              {{ trans('sitmc-launcher::launcher.interop.peers.enabled') }}
+            </label>
+          </div>
+        </div>
+        <div class="card-footer">
+          <button class="btn btn-primary" type="submit">
+            {{ trans('sitmc-launcher::launcher.action.save') }}
+          </button>
+          <a class="btn btn-default float-right" href="{{ route('sitmc-launcher.admin.interop.index') }}">
+            {{ trans('sitmc-launcher::launcher.action.back') }}
+          </a>
+        </div>
+      </form>
+    </div>
+
+    {% if peerStatus %}
+      <div class="col-md-5">
+        <div class="card card-info">
+          <div class="card-header">
+            <h3 class="card-title">{{ trans('sitmc-launcher::launcher.interop.peers.state') }}</h3>
+          </div>
+          <div class="card-body">
+            {% set stateClass = peerStatus.state == 'ok' ? 'bg-success' : (peerStatus.state == 'stale' ? 'bg-warning' : 'bg-secondary') %}
+            <p>
+              <span class="badge {{ stateClass }}">
+                {{ trans('sitmc-launcher::launcher.interop.state.' ~ peerStatus.state) }}
+              </span>
+            </p>
+            <p class="mb-1">
+              {{ trans('sitmc-launcher::launcher.interop.peers.last-sync') }}:
+              {{ peerStatus.fetched_at_text ?: '—' }}
+            </p>
+            <p class="mb-1">
+              {{ trans('sitmc-launcher::launcher.interop.peers.packs') }}:
+              {{ peerStatus.packs }}
+            </p>
+            {% if peerStatus.last_error %}
+              <p class="mb-0 text-danger">{{ peerStatus.last_error }}</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}

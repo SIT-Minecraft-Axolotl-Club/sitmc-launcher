@@ -3,6 +3,13 @@
 {% block title %}{{ trans('sitmc-launcher::launcher.title') }}{% endblock %}
 
 {% block content %}
+  <ul class="nav nav-tabs mb-3">
+    <li class="nav-item"><a class="nav-link active" href="{{ route('sitmc-launcher.admin.index') }}">{{ trans('sitmc-launcher::launcher.tab.instances') }}</a></li>
+    <li class="nav-item"><a class="nav-link" href="{{ route('sitmc-launcher.admin.announcements.index') }}">{{ trans('sitmc-launcher::launcher.tab.announcements') }}</a></li>
+    <li class="nav-item"><a class="nav-link" href="{{ route('sitmc-launcher.admin.releases.index') }}">{{ trans('sitmc-launcher::launcher.tab.releases') }}</a></li>
+    <li class="nav-item"><a class="nav-link" href="{{ route('sitmc-launcher.admin.interop.index') }}">{{ trans('sitmc-launcher::launcher.tab.interop') }}</a></li>
+  </ul>
+
   {% if status %}
     <div class="callout callout-success">{{ status }}</div>
   {% endif %}
@@ -93,15 +100,6 @@
         <div class="card-footer">
           <a class="btn btn-primary" href="{{ route('sitmc-launcher.admin.create') }}">
             {{ trans('sitmc-launcher::launcher.instances.create') }}
-          </a>
-          <a class="btn btn-default float-right" href="{{ route('sitmc-launcher.admin.releases.index') }}">
-            {{ trans('sitmc-launcher::launcher.releases.menu') }}
-          </a>
-          <a
-            class="btn btn-default float-right mr-2"
-            href="{{ route('sitmc-launcher.admin.announcements.index') }}"
-          >
-            {{ trans('sitmc-launcher::launcher.announcements.menu') }}
           </a>
         </div>
       </div>

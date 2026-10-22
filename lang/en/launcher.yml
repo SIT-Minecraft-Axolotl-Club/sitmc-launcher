@@ -1,5 +1,11 @@
-menu: "Launcher instances"
+menu: "Launcher"
 title: "SIT-Minecraft launcher"
+
+tab:
+  instances: "Instances"
+  announcements: "Announcements"
+  releases: "Releases"
+  interop: "Catalog"
 
 announcements:
   menu: "Launcher announcements"
@@ -223,3 +229,142 @@ status:
   release-created: "Release created."
   release-saved: "Release saved."
   release-deleted: "Release deleted."
+
+update_policy:
+  prompt: "Prompt before joining"
+  background: "Update silently in the background"
+  pinned: "Pinned; never auto-upgrade"
+
+binding:
+  pack: "Pack"
+  vanilla: "Version/loader only"
+
+interop:
+  menu: "Catalog"
+  title: "Catalog"
+  intro: "Launchers read the catalog from this address:"
+  open: "Open"
+  friends-api: "Friend instances API:"
+
+  field:
+    site_id: "Site id"
+    site_id-hint: "Letters, digits, underscores and dashes, up to 128 characters."
+    site_name: "Site name"
+    site_name-hint: "From Blessing Skin settings"
+    site_description: "Description"
+    site_domain: "Site domain"
+    site_domain-hint: "Host only, e.g. skin.sitmc.club. No https:// or path. Empty uses the request host."
+    domain: "Domain"
+    domain-hint: "e.g. mc.yudream.app. No https:// or path."
+    description: "Description"
+    manifest_url: "Manifest URL"
+    manifest_url-hint: "Empty uses https://{domain}/.well-known/mc-interop-v1.json."
+
+  state:
+    ok: "OK"
+    stale: "Stale"
+    never: "Not synced"
+
+  site:
+    title: "Settings"
+
+  aggregation:
+    title: "Peer sync"
+    enabled: "Sync peers automatically"
+    peer_ttl: "Interval"
+    minutes: ":minutes min"
+    peer_ttl-hint: "Default 5 minutes. Cron wins when configured; otherwise the next request triggers it when due."
+    cron: "Scheduled sync (cron)"
+    cron-hint: "Add this line to the server crontab to run every 5 minutes; the token is a sync secret, keep it private."
+    cron-rotate: "Rotate token"
+    cron-confirm: "The old command stops working after rotation. Continue?"
+
+  summary:
+    title: "Overview"
+    packs: "Entries"
+    peers: "Peers"
+    diagnostics: "Diagnostics"
+
+  publications:
+    title: "Listed instances"
+    intro: "Only checked instances appear in the catalog; unchecked instances stay private."
+    empty: "No instances yet."
+    no-server: "No server address"
+    vanilla: "Server only"
+    revision-missing: "No current version"
+    save: "Save"
+
+  peers:
+    title: "Peers"
+    intro: "Sites to sync from."
+    empty: "No peers yet."
+    add: "Add peer"
+    sync: "Sync all"
+    sync-one: "Sync"
+    state: "State"
+    last-sync: "Last sync"
+    packs: "Entries"
+    enabled: "Sync this peer"
+    confirm-delete: "Delete this peer?"
+
+  peer:
+    title: "Peer"
+    create-title: "Add peer"
+    edit-title: "Edit peer :id"
+
+  status:
+    settings-saved: "Interop settings saved."
+    publications-saved: "Publication selection saved: :count instance(s) published."
+    peer-created: "Peer added."
+    peer-saved: "Peer saved."
+    peer-deleted: "Peer and its snapshot deleted."
+    peer-synced: "Peer :site synced."
+    peer-sync-failed: "Peer :site failed to sync: :error"
+    peers-synced: "Peer sync finished: :ok ok, :failed failed."
+    peers-sync-busy: "A sync is already running; try again shortly."
+    token-rotated: "Sync token rotated. Update the crontab command."
+
+  problem:
+    site-domain-invalid: "The site root domain must be a host such as skin.sitmc.club, without https:// or a path."
+    peer-domain-invalid: "The peer root domain must be a host such as mc.yudream.app, without https:// or a path."
+    peer-manifest-url-invalid: "The peer manifest URL must be a public absolute HTTPS URL."
+    peer-site-id-taken: "That site id is already in the peer list."
+
+  diagnostic:
+    instance-id-invalid: "The instance id is invalid and was skipped."
+    server-missing: "The instance has no server address, so it cannot be published as an instance."
+    game-version-missing: "The game version is missing, so the instance is not published."
+    loader-invalid: "The loader is outside the allowed enum; the instance is not published until the source is fixed."
+    revision-invalid: "The current revision is invalid, so the instance is not published."
+    pack-revision-missing: "No pack exists for the current revision, so the instance is not published."
+    artifact-url-invalid: "The artifact URL is not public HTTPS, so the instance is not published."
+    artifact-size-missing: "The artifact size is missing, so the instance is not published."
+    artifact-hash-missing: "The artifact has no SHA-1/SHA-512, so the instance is not published."
+    site-id-invalid: "The site id is invalid; fell back to sitmc."
+    site-domain-invalid: "The site root domain is invalid; fell back to the request host."
+    peer-config-invalid: "The peer configuration is incomplete and was skipped."
+    peer-self-or-duplicate: "The peer equals this site or is duplicated and was skipped."
+    peer-manifest-invalid: "The peer manifest URL is invalid and was skipped."
+    peer-no-snapshot: "The peer has no successful snapshot yet, so nothing is ingested."
+    peer-snapshot-invalid: "The peer snapshot cannot be parsed, so nothing is ingested."
+    peer-sync-failed: "The peer sync failed; the last successful snapshot keeps being served."
+    peer-document-invalid: "The peer document has an invalid shape and was skipped."
+    peer-packs-missing: "The peer document has no packs array and was skipped."
+    peer-entry-invalid: "A peer entry has an invalid shape and was skipped."
+    peer-entry-id-invalid: "A peer entry id is invalid and was skipped."
+    peer-entry-id-collision: "A peer entry collides with this site or an earlier entry and was dropped."
+    peer-entry-server-missing: "A peer entry has no server address and was dropped."
+    peer-entry-game-version-missing: "A peer entry has no game version and was dropped."
+    peer-entry-loader-invalid: "A peer entry uses an unsupported loader and was dropped."
+    peer-entry-revision-invalid: "A peer pack entry has no valid revision and was dropped."
+    peer-entry-artifact-invalid: "A peer artifact is invalid (HTTPS/size/hash/format) and was dropped."
+    peer-entry-revision-without-artifact: "A peer entry has a revision but no artifact and was dropped."
+    peer-shape-invalid: "The peer document is not v1 (no packs array) and was not ingested."
+    peer-timeout: "Timed out while pulling the peer."
+    peer-tls: "The peer's TLS certificate could not be verified; check PHP's CA trust store."
+    peer-connection: "The peer could not be reached."
+    peer-curl-missing: "cURL is not available, so peers cannot be pulled."
+    peer-redirect-invalid: "The peer redirected to a disallowed address (same-origin public HTTPS only); the redirect was refused."
+    peer-redirect-limit: "The peer redirected too many times."
+    peer-json-invalid: "The peer did not return valid JSON."
+    peer-document-too-large: "The peer document exceeds the 1 MiB limit."

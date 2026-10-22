@@ -1,0 +1,327 @@
+{% extends 'admin.base' %}
+
+{% block title %}{{ trans('sitmc-launcher::launcher.interop.title') }}{% endblock %}
+
+{% block content %}
+  <ul class="nav nav-tabs mb-3">
+    <li class="nav-item"><a class="nav-link" href="{{ route('sitmc-launcher.admin.index') }}">{{ trans('sitmc-launcher::launcher.tab.instances') }}</a></li>
+    <li class="nav-item"><a class="nav-link" href="{{ route('sitmc-launcher.admin.announcements.index') }}">{{ trans('sitmc-launcher::launcher.tab.announcements') }}</a></li>
+    <li class="nav-item"><a class="nav-link" href="{{ route('sitmc-launcher.admin.releases.index') }}">{{ trans('sitmc-launcher::launcher.tab.releases') }}</a></li>
+    <li class="nav-item"><a class="nav-link active" href="{{ route('sitmc-launcher.admin.interop.index') }}">{{ trans('sitmc-launcher::launcher.tab.interop') }}</a></li>
+  </ul>
+
+  {% if status %}
+    <div class="callout callout-success">{{ status }}</div>
+  {% endif %}
+
+  {% if errors is defined and errors.any() %}
+    <div class="callout callout-danger">
+      <ul class="mb-0">
+        {% for message in errors.all() %}
+          <li>{{ message }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  <div class="callout callout-info py-2">
+    <div class="d-flex justify-content-between align-items-center">
+      <div class="small">
+        <div>{{ trans('sitmc-launcher::launcher.interop.intro') }}</div>
+        <code>{{ wellKnownUrl }}</code>
+        <span class="text-muted">·</span>
+        <code>{{ endpointUrl }}</code>
+        <div class="mt-1">{{ trans('sitmc-launcher::launcher.interop.friends-api') }} <code>{{ friendsUrl }}</code></div>
+      </div>
+      <a class="btn btn-sm btn-default ml-3" href="{{ wellKnownUrl }}" target="_blank" rel="noopener">
+        {{ trans('sitmc-launcher::launcher.interop.open') }}
+      </a>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-7">
+      <form class="card card-primary" method="post" action="{{ route('sitmc-launcher.admin.interop.settings') }}">
+        {{ csrf_field() }}
+        <div class="card-header">
+          <h3 class="card-title">{{ trans('sitmc-launcher::launcher.interop.site.title') }}</h3>
+        </div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="form-group col-md-6">
+              <label>{{ trans('sitmc-launcher::launcher.interop.field.site_id') }}</label>
+              <input class="form-control" name="site_id" value="{{ settings.site_id }}">
+            </div>
+            <div class="form-group col-md-6">
+              <label>{{ trans('sitmc-launcher::launcher.interop.field.site_name') }}</label>
+              <div class="form-control-plaintext">{{ settings.site_name }}</div>
+              <small class="form-text text-muted">{{ trans('sitmc-launcher::launcher.interop.field.site_name-hint') }}</small>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>{{ trans('sitmc-launcher::launcher.interop.field.site_domain') }}</label>
+            <input class="form-control" name="site_domain" value="{{ settings.site_domain }}" placeholder="skin.sitmc.club">
+            <small class="form-text text-muted">{{ trans('sitmc-launcher::launcher.interop.field.site_domain-hint') }}</small>
+          </div>
+
+          <div class="form-group">
+            <label>{{ trans('sitmc-launcher::launcher.interop.field.site_description') }}</label>
+            <textarea class="form-control" name="site_description" rows="2">{{ settings.site_description }}</textarea>
+          </div>
+
+          <hr>
+
+          <div class="form-check">
+            <input type="hidden" name="aggregate" value="0">
+            <input
+              id="interop-aggregate"
+              class="form-check-input"
+              type="checkbox"
+              name="aggregate"
+              value="1"
+              {% if settings.aggregate %}checked{% endif %}
+            >
+            <label class="form-check-label" for="interop-aggregate">
+              {{ trans('sitmc-launcher::launcher.interop.aggregation.enabled') }}
+            </label>
+          </div>
+
+          <div class="form-group mt-2">
+            <label>{{ trans('sitmc-launcher::launcher.interop.aggregation.peer_ttl') }}</label>
+            <select class="form-control" name="peer_ttl">
+              {% for minutes in [5, 10, 15, 30, 60] %}
+                <option value="{{ minutes * 60 }}" {% if settings.peer_ttl == minutes * 60 %}selected{% endif %}>
+                  {{ trans('sitmc-launcher::launcher.interop.aggregation.minutes', {minutes: minutes}) }}
+                </option>
+              {% endfor %}
+              {% if settings.peer_ttl not in [300, 600, 900, 1800, 3600] %}
+                <option value="{{ settings.peer_ttl }}" selected>{{ settings.peer_ttl }}s</option>
+              {% endif %}
+            </select>
+            <small class="form-text text-muted">{{ trans('sitmc-launcher::launcher.interop.aggregation.peer_ttl-hint') }}</small>
+          </div>
+        </div>
+        <div class="card-footer">
+          <button class="btn btn-primary" type="submit">
+            {{ trans('sitmc-launcher::launcher.action.save') }}
+          </button>
+        </div>
+      </form>
+
+      <details class="mt-2">
+        <summary class="text-muted small">{{ trans('sitmc-launcher::launcher.interop.aggregation.cron') }}</summary>
+        <p class="small text-muted mt-2 mb-1">{{ trans('sitmc-launcher::launcher.interop.aggregation.cron-hint') }}</p>
+        <pre class="small mb-2"><code>{{ cronCommand }}</code></pre>
+        <form
+          method="post"
+          action="{{ route('sitmc-launcher.admin.interop.sync-token') }}"
+          onsubmit="return confirm('{{ trans('sitmc-launcher::launcher.interop.aggregation.cron-confirm') }}')"
+        >
+          {{ csrf_field() }}
+          <button class="btn btn-sm btn-default" type="submit">
+            {{ trans('sitmc-launcher::launcher.interop.aggregation.cron-rotate') }}
+          </button>
+        </form>
+      </details>
+    </div>
+
+    <div class="col-md-5">
+      <div class="card card-info">
+        <div class="card-header">
+          <h3 class="card-title">{{ trans('sitmc-launcher::launcher.interop.summary.title') }}</h3>
+        </div>
+        <div class="card-body">
+          <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
+            <span>{{ trans('sitmc-launcher::launcher.interop.summary.packs') }}</span>
+            <strong>{{ packCount }}</strong>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span>{{ trans('sitmc-launcher::launcher.interop.summary.peers') }}</span>
+            <strong>{{ peerCount }}</strong>
+          </div>
+
+          {% if diagnostics is not empty %}
+            <hr>
+            <div class="small text-muted mb-1">{{ trans('sitmc-launcher::launcher.interop.summary.diagnostics') }}</div>
+            <ul class="mb-0 pl-3 small">
+              {% for diagnostic in diagnostics %}
+                <li class="mb-1">
+                  <code>{{ diagnostic.label }}</code>
+                  {% if diagnostic.instanceId is defined %}<span class="text-muted">{{ diagnostic.instanceId }}</span>{% endif %}
+                  {% if diagnostic.siteId is defined %}<span class="text-muted">{{ diagnostic.siteId }}</span>{% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card card-primary">
+    <div class="card-header">
+      <h3 class="card-title">{{ trans('sitmc-launcher::launcher.interop.publications.title') }}</h3>
+    </div>
+    <div class="card-body">
+      <p class="text-muted mb-3">{{ trans('sitmc-launcher::launcher.interop.publications.intro') }}</p>
+
+      {% if instances is empty %}
+        <div class="callout callout-info mb-0">{{ trans('sitmc-launcher::launcher.interop.publications.empty') }}</div>
+      {% else %}
+        <form method="post" action="{{ route('sitmc-launcher.admin.interop.publications') }}">
+          {{ csrf_field() }}
+          <table class="table table-hover mb-3">
+            <thead>
+              <tr>
+                <th style="width: 36px;"></th>
+                <th>{{ trans('sitmc-launcher::launcher.field.id') }}</th>
+                <th>{{ trans('sitmc-launcher::launcher.field.server_address') }}</th>
+                <th>{{ trans('sitmc-launcher::launcher.field.revision') }}</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for instance in instances %}
+                <tr>
+                  <td>
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      name="published[]"
+                      value="{{ instance.id }}"
+                      {% if instance.published %}checked{% endif %}
+                    >
+                  </td>
+                  <td>
+                    <code>{{ instance.id }}</code>
+                    <div class="small text-muted">{{ instance.name }}</div>
+                  </td>
+                  <td>
+                    {% if instance.has_server %}
+                      {{ instance.server_address }}{% if instance.server_port %}:{{ instance.server_port }}{% endif %}
+                    {% else %}
+                      <span class="badge bg-danger">{{ trans('sitmc-launcher::launcher.interop.publications.no-server') }}</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if instance.current_pack %}
+                      {{ instance.revision }}
+                    {% elseif instance.has_packs %}
+                      <span class="badge bg-warning">{{ trans('sitmc-launcher::launcher.interop.publications.revision-missing') }}</span>
+                    {% else %}
+                      <span class="text-muted">{{ trans('sitmc-launcher::launcher.interop.publications.vanilla') }}</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-right">
+                    <a
+                      class="btn btn-sm btn-default"
+                      href="{{ route('sitmc-launcher.admin.edit', {instanceId: instance.id}) }}"
+                    >
+                      {{ trans('sitmc-launcher::launcher.action.edit') }}
+                    </a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          <button class="btn btn-primary" type="submit">
+            {{ trans('sitmc-launcher::launcher.interop.publications.save') }}
+          </button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card card-primary">
+    <div class="card-header">
+      <h3 class="card-title">{{ trans('sitmc-launcher::launcher.interop.peers.title') }}</h3>
+    </div>
+    <div class="card-body">
+      <p class="text-muted mb-3">{{ trans('sitmc-launcher::launcher.interop.peers.intro') }}</p>
+
+      {% if peers is empty %}
+        <div class="callout callout-info mb-0">{{ trans('sitmc-launcher::launcher.interop.peers.empty') }}</div>
+      {% else %}
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th>{{ trans('sitmc-launcher::launcher.interop.field.site_id') }}</th>
+              <th>{{ trans('sitmc-launcher::launcher.interop.field.domain') }}</th>
+              <th>{{ trans('sitmc-launcher::launcher.interop.peers.packs') }}</th>
+              <th>{{ trans('sitmc-launcher::launcher.interop.peers.state') }}</th>
+              <th>{{ trans('sitmc-launcher::launcher.interop.peers.last-sync') }}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for peer in peers %}
+              <tr>
+                <td>
+                  <code>{{ peer.site_id }}</code>
+                  <div class="small text-muted">
+                    {{ peer.name ?: '—' }}{% if peer.description %} · {{ peer.description }}{% endif %}
+                  </div>
+                  {% if not peer.enabled %}
+                    <span class="badge bg-secondary">{{ trans('sitmc-launcher::launcher.instances.disabled') }}</span>
+                  {% endif %}
+                </td>
+                <td>{{ peer.domain ?: '—' }}</td>
+                <td>{{ peer.packs }}</td>
+                <td>
+                  {% set stateClass = peer.state == 'ok' ? 'bg-success' : (peer.state == 'stale' ? 'bg-warning' : 'bg-secondary') %}
+                  <span class="badge {{ stateClass }}">{{ trans('sitmc-launcher::launcher.interop.state.' ~ peer.state) }}</span>
+                  {% if peer.last_error %}
+                    <div class="small text-danger">{{ peer.last_error }}</div>
+                  {% endif %}
+                </td>
+                <td>{{ peer.fetched_at_text ?: '—' }}</td>
+                <td class="text-right text-nowrap">
+                  <form
+                    class="d-inline"
+                    method="post"
+                    action="{{ route('sitmc-launcher.admin.interop.peers.sync', {siteId: peer.site_id}) }}"
+                  >
+                    {{ csrf_field() }}
+                    <button class="btn btn-sm btn-default" type="submit">
+                      {{ trans('sitmc-launcher::launcher.interop.peers.sync-one') }}
+                    </button>
+                  </form>
+                  <a
+                    class="btn btn-sm btn-default"
+                    href="{{ route('sitmc-launcher.admin.interop.peers.edit', {siteId: peer.site_id}) }}"
+                  >
+                    {{ trans('sitmc-launcher::launcher.action.edit') }}
+                  </a>
+                  <form
+                    class="d-inline"
+                    method="post"
+                    action="{{ route('sitmc-launcher.admin.interop.peers.destroy', {siteId: peer.site_id}) }}"
+                    onsubmit="return confirm('{{ trans('sitmc-launcher::launcher.interop.peers.confirm-delete') }}')"
+                  >
+                    {{ csrf_field() }}
+                    {{ method_field('DELETE') }}
+                    <button class="btn btn-sm btn-danger" type="submit">
+                      {{ trans('sitmc-launcher::launcher.action.delete') }}
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+    </div>
+    <div class="card-footer">
+      <a class="btn btn-primary" href="{{ route('sitmc-launcher.admin.interop.peers.create') }}">
+        {{ trans('sitmc-launcher::launcher.interop.peers.add') }}
+      </a>
+      <form class="d-inline" method="post" action="{{ route('sitmc-launcher.admin.interop.peers.sync-all') }}">
+        {{ csrf_field() }}
+        <button class="btn btn-default" type="submit">
+          {{ trans('sitmc-launcher::launcher.interop.peers.sync') }}
+        </button>
+      </form>
+    </div>
+  </div>
+{% endblock %}

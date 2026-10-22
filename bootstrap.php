@@ -6,13 +6,20 @@ use Illuminate\Support\Facades\Storage;
 use SITMinecraft\Launcher\Announcement\AnnouncementRules;
 use SITMinecraft\Launcher\Auth\TokenVerifier;
 use SITMinecraft\Launcher\Http\Controllers\Admin\AnnouncementController as AdminAnnouncementController;
+use SITMinecraft\Launcher\Http\Controllers\Admin\InteropController as AdminInteropController;
 use SITMinecraft\Launcher\Http\Controllers\Admin\InstanceController;
 use SITMinecraft\Launcher\Http\Controllers\Admin\ReleaseController;
 use SITMinecraft\Launcher\Http\Controllers\AnnouncementController as PublicAnnouncementController;
+use SITMinecraft\Launcher\Http\Controllers\InteropController;
 use SITMinecraft\Launcher\Http\Controllers\ManifestController;
 use SITMinecraft\Launcher\Http\Controllers\PackController;
 use SITMinecraft\Launcher\Http\Controllers\SkinController;
 use SITMinecraft\Launcher\Http\Controllers\UpdateController;
+use SITMinecraft\Launcher\Interop\InteropRepository;
+use SITMinecraft\Launcher\Interop\InteropRules;
+use SITMinecraft\Launcher\Interop\PeerAggregator;
+use SITMinecraft\Launcher\Interop\PeerFetcher;
+use SITMinecraft\Launcher\Interop\SiteDocumentService;
 use SITMinecraft\Launcher\Manifest\PackStore;
 use SITMinecraft\Launcher\Update\ReleaseRules;
 
@@ -40,30 +47,64 @@ return function ($plugin) {
         ));
     });
 
+    // mc-interop v1: storage, peer puller and the single serializer. Everything
+    // is a singleton so one request builds one document and reuses one HTTP
+    // client configuration.
+    app()->singleton(InteropRepository::class, static fn () => new InteropRepository());
+
+    app()->singleton(PeerFetcher::class, static fn () => new PeerFetcher(
+        (int) config('sitmc-launcher.interop_timeout', 15),
+        (int) config('sitmc-launcher.interop_attempts', 3),
+        (int) config('sitmc-launcher.interop_max_bytes', InteropRules::MAX_PEER_BYTES)
+    ));
+
+    app()->singleton(PeerAggregator::class, static fn ($app) => new PeerAggregator(
+        $app->make(InteropRepository::class),
+        $app->make(PeerFetcher::class)
+    ));
+
+    app()->singleton(SiteDocumentService::class, static fn ($app) => new SiteDocumentService(
+        $app->make(InteropRepository::class),
+        $app->make(PeerAggregator::class)
+    ));
+
     Hook::addMenuItem('admin', 3, [
         'title' => 'sitmc-launcher::launcher.menu',
         'link' => 'admin/launcher',
         'icon' => 'fa-cube',
     ]);
 
-    Hook::addMenuItem('admin', 4, [
-        'title' => 'sitmc-launcher::launcher.announcements.menu',
-        'link' => 'admin/launcher/announcements',
-        'icon' => 'fa-bullhorn',
-    ]);
-
-    Hook::addMenuItem('admin', 5, [
-        'title' => 'sitmc-launcher::launcher.releases.menu',
-        'link' => 'admin/launcher/releases',
-        'icon' => 'fa-cloud-download-alt',
-    ]);
-
     Hook::addRoute(function (Router $router) {
+        // mc-interop v1 unified exit. Same bytes at the canonical well-known
+        // path and at the plugin-visible mirror a reverse proxy can forward.
+        // Nothing below the legacy `api/launcher` group changed.
+        $router->group(['middleware' => ['api', 'throttle:60,1']], function () use ($router) {
+            $router->get('.well-known/mc-interop-v1.json', [InteropController::class, 'site'])
+                ->name('sitmc-launcher.interop.well-known');
+        });
+
+        $router->group(
+            ['middleware' => ['api', 'throttle:60,1'], 'prefix' => 'api/launcher/interop/v1'],
+            function () use ($router) {
+                $router->get('site', [InteropController::class, 'site'])
+                    ->name('sitmc-launcher.interop.site');
+
+                $router->get('friends', [InteropController::class, 'friends'])
+                    ->name('sitmc-launcher.interop.friends');
+
+                $router->match(['get', 'post'], 'refresh', [InteropController::class, 'refresh'])
+                    ->name('sitmc-launcher.interop.refresh');
+            }
+        );
+
         $router->group(
             ['middleware' => ['api', 'throttle:60,1'], 'prefix' => 'api/launcher'],
             function () use ($router) {
                 $router->get('manifest', [ManifestController::class, 'show'])
                     ->name('sitmc-launcher.manifest');
+
+                $router->get('friends', [InteropController::class, 'friends'])
+                    ->name('sitmc-launcher.friends');
 
                 $router->get('packs/{instanceId}/{revision}', [PackController::class, 'show'])
                     ->where(['instanceId' => '[A-Za-z0-9_-]+', 'revision' => '[0-9]+'])
@@ -201,6 +242,46 @@ return function ($plugin) {
                 $router->delete('releases/{id}', [ReleaseController::class, 'destroy'])
                     ->where('id', '[0-9]+')
                     ->name('sitmc-launcher.admin.releases.destroy');
+
+                // mc-interop admin screens. These are additive routes; the
+                // legacy instance/announcement/release routes above are
+                // registered exactly as before.
+                $router->get('interop', [AdminInteropController::class, 'index'])
+                    ->name('sitmc-launcher.admin.interop.index');
+
+                $router->post('interop/settings', [AdminInteropController::class, 'saveSettings'])
+                    ->name('sitmc-launcher.admin.interop.settings');
+
+                $router->get('interop/peers/create', [AdminInteropController::class, 'createPeer'])
+                    ->name('sitmc-launcher.admin.interop.peers.create');
+
+                $router->post('interop/peers', [AdminInteropController::class, 'storePeer'])
+                    ->name('sitmc-launcher.admin.interop.peers.store');
+
+                $router->post('interop/peers/sync', [AdminInteropController::class, 'syncPeers'])
+                    ->name('sitmc-launcher.admin.interop.peers.sync-all');
+
+                $router->get('interop/peers/{siteId}/edit', [AdminInteropController::class, 'editPeer'])
+                    ->where('siteId', '[A-Za-z0-9_-]+')
+                    ->name('sitmc-launcher.admin.interop.peers.edit');
+
+                $router->put('interop/peers/{siteId}', [AdminInteropController::class, 'updatePeer'])
+                    ->where('siteId', '[A-Za-z0-9_-]+')
+                    ->name('sitmc-launcher.admin.interop.peers.update');
+
+                $router->delete('interop/peers/{siteId}', [AdminInteropController::class, 'destroyPeer'])
+                    ->where('siteId', '[A-Za-z0-9_-]+')
+                    ->name('sitmc-launcher.admin.interop.peers.destroy');
+
+                $router->post('interop/peers/{siteId}/sync', [AdminInteropController::class, 'syncPeer'])
+                    ->where('siteId', '[A-Za-z0-9_-]+')
+                    ->name('sitmc-launcher.admin.interop.peers.sync');
+
+                $router->post('interop/publications', [AdminInteropController::class, 'savePublications'])
+                    ->name('sitmc-launcher.admin.interop.publications');
+
+                $router->post('interop/sync-token', [AdminInteropController::class, 'rotateSyncToken'])
+                    ->name('sitmc-launcher.admin.interop.sync-token');
             }
         );
     });
