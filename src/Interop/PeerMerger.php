@@ -74,6 +74,14 @@ final class PeerMerger
                     continue;
                 }
 
+                // Only the peer's own entries are ingested. Entries that
+                // already carry `source` are the peer's view of another site;
+                // re-ingesting them would double-prefix ids and echo entries
+                // back to their origin.
+                if (isset($item['source'])) {
+                    continue;
+                }
+
                 $entry = $this->entry($item, $siteId);
 
                 if ($entry === null) {
