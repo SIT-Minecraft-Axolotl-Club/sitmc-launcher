@@ -40,14 +40,16 @@ pnpm app:build
 
 ## 对外清单(mc-interop v1)
 
-协议见仓库根目录的 `launcher-interop-protocol-v1.md`。原有 `/api/launcher/manifest`、整合包下载、公告与自更新端点**路径和响应体都没有改动**；旧启动器继续读旧清单，新启动器/第三方站点读统一出口。
+协议见仓库根目录的 `launcher-interop-protocol-v1.md`。原有 `/api/launcher/manifest`、整合包下载、公告与自更新端点**路径和响应体都没有改动**；旧启动器继续读旧清单，新启动器/第三方站点读本站自己的 mc-interop 文档。
 
 | 新增端点 | 说明 |
 | --- | --- |
-| `GET /.well-known/mc-interop-v1.json` | 唯一的 SiteDocument |
+| `GET /.well-known/mc-interop-v1.json` | 本站自己的 SiteDocument |
 | `GET /api/launcher/interop/v1/site` | 同一份文档的插件端点，供反代把 well-known 转发过来 |
 | `GET /api/launcher/friends` | 只含友站实例的清单，manifest 结构并带 `source` |
 | `GET /api/launcher/interop/v1/friends` | 同上，兼容旧地址 |
+
+`/site` 和 `/.well-known` **只发布本站实例，不混入友站实例**；友站实例只出现在 `/friends`。
 
 响应带 `ETag` 与 `Cache-Control: public, max-age=300`；客户端带 `If-None-Match` 命中时返回 `304`。所有时间戳为 UTC ISO-8601。
 
@@ -61,7 +63,7 @@ pnpm app:build
 
 - `site`：`{id, name, description, domain}`。`name` 只读，直接取 Blessing Skin 后台的站点名称（`site_name`）；`domain` 是站点根域名 host（如 `skin.sitmc.club`，不带 `https://` 和路径）。
 - `packs[]`：扁平数组，不再有独立的 `servers` 区块、`binding`、`endpoints`、`flags`、`channel`、`mirrors`、`auth`、`manifestVersion` 等字段。
-- 不再有 `order`：`packs[]` 固定按 `id` 排序，本站条目在前，友站条目按 `id` 再按来源域名；后台的「排序」字段只影响旧 manifest。
+- 不再有 `order`：`packs[]` 固定按 `id` 排序；只含本站条目，后台的「排序」字段只影响旧 manifest。
 - `peers[]`：只列友站（不重复列本站），字段 `siteId / name? / description? / domain / manifestUrl`，没有 `trust`。
 - `updatedAt`：只在顶层出现。
 - `artifact` 可选：有包时输出 `format/url/size/sha1/sha512`；两个 hash 键都输出，未知写 `null`，至少一个非 `null`。无包条目省略 `artifact` 和 `revision`。
@@ -81,7 +83,7 @@ GET /api/launcher/interop/v1/friends   （同一个响应，兼容旧地址）
 - 只有至少有一个可用实例的友站才会出现在 `sites[]`；没有实例的友站不占位。
 - `instances[]` 里的字段沿用 manifest：`id / name / description / icon_url / sort / revision / minecraft / pack / server / required`。
 - `sort` 由本站按 `id` 生成（每个友站 1..n），不采用友站自己的排序值。
-- 实例 `id` 带来源前缀，例如 `yda:pixelsit`，和主清单一致。
+- 实例 `id` 带来源前缀，例如 `yda:pixelsit`，只在 `/friends` 接口内部用于防止同名冲突。
 - 实例不再重复带 `source`，来源就是它所在的 `sites[]` 分组。
 - `stale: true` 表示该友站这次拉取失败，`instances` 来自上一次成功快照。
 - 友站聚合关闭或没有快照时，`sites` 是空数组。
@@ -165,9 +167,9 @@ GET /api/launcher/interop/v1/friends   （同一个响应，兼容旧地址）
 - 友站离线也可以添加：先用 `pending-...` 占位，首次成功同步后自动换成对方真实的 `site.id`。离线期间状态显示「未同步/待识别」，不会影响其他友站；占位 ID 不会出现在公开的 `peers[]` 里。
 - 后台维护友站 allowlist；默认每 5 分钟检查一次。没有 cron 时，到点后由下一次访问清单触发；后台「定时同步」里给出 crontab 命令，可以固定每 5 分钟拉取，不再依赖访问。单次拉取 15 秒超时、3 次退避重试。
 - 后台「友站」里可以点「同步」或「同步全部」手动触发。
-- 友站失败时沿用最近一次成功快照，外来条目带 `source.stale: true`，**永不静默清空**。
-- 外来条目带 `source{siteId, domain, stale?}`；本家条目不带。
-- 外来条目的 `id` 会加来源前缀，例如 `ysumc:survival`；本站自己的 `survival` 保持不变，因此两边同名实例可以同时存在。
+- 友站失败时沿用最近一次成功快照，友站实例带 `source.stale: true`，**永不静默清空**。
+- 友站实例带 `source{siteId, domain, stale?}`；本站自己的 `/site` 不包含这些条目。
+- 友站实例的 `id` 会加来源前缀，例如 `ysumc:survival`，只出现在 `/friends` 接口中；本站 `/site` 的 `survival` 保持不变。
 - 只采入友站自己的条目；友站文档里已经带 `source` 的转引条目不二次采入，避免回环和双重前缀。
 - 友站条目已自带 `server`，合并时不再重写绑定；同一友站文档内重复的 `id` 仍会丢弃并记诊断。
 - 公开请求发现快照过期时，在响应结束后触发一次同步，不阻塞启动器；后台「同步」/「同步全部」也可手动触发。

@@ -17,8 +17,8 @@
    站点身份、**管理员选择发布**的实例目录、服务器地址与友站发现。
 2. **适配器架构**：入口侧适配多种整合包格式（mrpack / CurseForge zip / MultiMC / 原版 /
    遗留 schema），出口侧序列化**唯一**——v1 只出一种 canonical JSON。
-3. **多站互通**：跨站聚合发生在**站点服务端**——本家站轮询友站清单、合并后经自己的
-   统一出口下发给启动器；启动器只读本家一个 origin，不做多站客户端聚合。
+3. **多站互通**：站点出口只发布**本站**实例；`peers[]` 只做友站发现。跨站聚合由
+   启动器或独立的聚合接口完成，不混入本站 SiteDocument 的 `packs[]`。
 4. **启动器侧对应协议**：发现、缓存、安装/更新、加入服务器的完整客户端行为规范。
 
 非目标（v1 明确不做）：
@@ -129,8 +129,7 @@ GET {origin}/.well-known/mc-interop-v1.json        → SiteDocument（200）
 - `peers` 始终输出；没有友站时为 `[]`。它只给其他站点互采参考，启动器可完全忽略。
 - `updatedAt` 只在顶层出现，各集合不再带自己的 `updatedAt`；顶层 `updatedAt` 变化即
   整份文档重拉。
-- 出口中的条目可包含本站互采合并的友站内容（§7），外来条目携带 `source` 溯源字段、
-  本家条目省略。
+- `packs[]` **只包含本站实例**，不得合并友站条目；友站内容由启动器或独立聚合接口获取。
 - v1 不定义 `site.origin`、`site.website`、`site.icon`、`site.contact`，客户端以实际
   请求的 origin 为准。
 - 机器可读结构定义见附录 B，完整示例见附录 C。
@@ -142,7 +141,7 @@ GET {origin}/.well-known/mc-interop-v1.json        → SiteDocument（200）
 - 只有被选中的实例才出现在出口；未选中的实例不得通过任何字段或接口泄露。
 - 发布选择是站内配置，不进入 JSON；`packs[]` 里只有被选中的条目。附录 C 只列被选中的
   3 个实例，站内其他实例不会出现。
-- 友站内容按各友站自己的发布选择合并；本家不得替友站扩大范围。
+- 友站内容不进入 `packs[]`；友站自己的发布选择只影响它自己的出口。
 
 ## 4. PackEntry：整合包 + 服务器条目
 
@@ -173,7 +172,7 @@ GET {origin}/.well-known/mc-interop-v1.json        → SiteDocument（200）
 
 | 字段 | 规则 |
 | --- | --- |
-| `id` | 站内稳定 ID（string），**站点内唯一**；无 `artifact` 的纯服务器条目用它表示服务器标识。合并出口中的友站条目统一加 `{siteId}:` 前缀（如 `ysumc:survival`），本家条目保持原 id；冒号保留给跨站命名空间。 |
+| `id` | 站内稳定 ID（string），**站点内唯一**；无 `artifact` 的纯服务器条目用它表示服务器标识。 |
 | `name` | 必填，展示名。 |
 | `summary` | 可选，简短说明。 |
 | `revision` | 有 `artifact` 时必填，单调递增整数；同包同 revision 内容变化必须 +1。无 `artifact` 时省略。 |
@@ -189,11 +188,10 @@ GET {origin}/.well-known/mc-interop-v1.json        → SiteDocument（200）
 | `server` | 必填；绑定一个服务器地址，最多一个。 |
 | `server.address` | 必填；玩家可见主地址。 |
 | `server.port` | 可选；省略 = 不指定（由 SRV 记录或客户端默认处理），**禁止**服务端擅自补 25565。 |
-| `source` | 友站条目才有：`{siteId, domain, stale?}`；本家条目省略。 |
 
 - 一个条目就是一个**实例**：一个整合包（可省略）+ 一个服务器 IP + 版本。同一整合包
-  需要出现在多个服务器时，使用多个条目并保证站点内 `id` 唯一；合并出口通过
-  `{siteId}:` 前缀保证全局唯一。
+  需要出现在多个服务器时，使用多个条目并保证站点内 `id` 唯一；聚合扩展如需合并多站，
+  可用 `{siteId}:` 前缀避免同名冲突。
 - 目录**只含包级/版本级元数据**，不含文件级 entry 清单——文件级细节在 artifact 内部
   （mrpack index 等）或分发后端端点里，出口保持轻量。
 - 不再有 `version`、`channel`、`flags`、`releaseNotes`、`icon` 等字段；当前 revision 就是
@@ -258,14 +256,15 @@ GET {origin}/.well-known/mc-interop-v1.json        → SiteDocument（200）
 - 启动器本地声明自己支持的 `artifact.format` 集合；目录中不支持的 format 条目
   显示但禁用安装，不算协议违规。
 
-## 7. 多站互通（站点侧互采聚合）
+## 7. 多站互通（友站发现）
 
-跨站聚合发生在**站点服务端**，启动器不参与：启动器只认一个本家 origin，本家站后台
-轮询友站清单、合并进自己的统一出口。角色只有两种，且可兼任（A 站采 B 站的同时被 C 站采）：
+v1 的 SiteDocument 只描述**本站自己**的实例；`packs[]` 不允许混入友站条目。
+`peers[]` 只用于友站发现，启动器/第三方站点可以据此自行聚合，但聚合结果不得写回
+本站的 well-known 文档。
 
-- **源站**：被别人采的站。只需按本协议发布 well-known 清单，无需任何"被聚合"配置。
-- **本家（聚合站）**：启动器配置的站点。后台维护友站 allowlist，定时拉取各友站
-  SiteDocument 并合并为自己的出口视图。
+- **源站**：按本协议发布自己的 well-known 清单。
+- **聚合方（可选）**：启动器或独立接口读取多个源站，自行合并展示；它不改变任何源站
+  的 SiteDocument。
 
 ### 7.1 PeerEntry（本家声明自己采谁 / 推荐谁）
 
@@ -282,25 +281,22 @@ GET {origin}/.well-known/mc-interop-v1.json        → SiteDocument（200）
   `peers` 始终输出，没有友站时为 `[]`。启动器可完全忽略该字段。
 - v1 不再定义 `trust` 字段。
 
-### 7.2 互采与合并规则
+### 7.2 可选聚合（扩展，不属于 v1 SiteDocument）
 
-- **拉取**：条件请求（`If-None-Match`）+ 15s 超时 + 3 次退避重试；友站失败时沿用最近
-  一次成功快照继续服务，并把该来源条目的 `source.stale: true` 置位，**永不静默清空**
-  已采入内容。友站清单 URL 必须指向 v1 路径（`mc-interop-v1.json`）；若迁移到
-  `mc-interop-v2.json` 等新主版本，本家不得按 v1 解释，应暂停采入并告警，等管理员
-  改回 v1 或本家完成适配。
-- **溯源**：合并视图中每条外来条目携带
-  `source: {"siteId": "...", "domain": "..."}`；快照过期时**才**追加 `"stale": true`，
-  正常快照不输出 `stale`。本家自有条目省略 `source`。前端可据此分组展示"友站内容"。
-- **命名空间**：本站内部资源键 = `domain + "/" + id`；对外出口仍是一个扁平
-  `packs[]`，消费方无感知。外来条目 id 统一加 `{siteId}:` 前缀（如 `ysumc:survival`），
-  因此不同站点可以发布同名实例而不会互相覆盖；本家条目保持原 id。
+站点或启动器可以实现独立的友站聚合接口；它读取友站清单、合并展示，但**不得**把结果
+写回自己的 `packs[]`。实现聚合时建议遵循：
+
+- **拉取**：条件请求（`If-None-Match`）+ 超时 + 重试；友站失败时沿用最近一次成功快照，
+  并给来源条目标记 `stale: true`，不要静默清空。
 - **只采直连站点**：友站文档里已带 `source` 的条目是它对外转引的内容，不再二次采入，
-  避免回环和双重前缀。每个站点只合并其直接友站的 `source`-less 条目。
-- **原样合并**：外来条目已经自带 `server`，合并时不需要再重写绑定；`artifact.url`
-  保持指向源站绝对 URL，完整性以 hash 校验为准。
-- **门控**：v1 出口匿名可读，不定义 `auth` 字段，也不采入需要认证的友站内容；门控
-  内容留在各站站内契约。
+  避免回环和双重前缀。
+- **溯源**：聚合结果中的外来条目携带
+  `source: {"siteId": "...", "domain": "..."}`；本家条目省略。
+- **命名空间**：聚合结果中的外来条目 id 建议加 `{siteId}:` 前缀（如 `ysumc:survival`），
+  避免不同站点的同名实例互相覆盖。
+- **原样合并**：外来条目自带 `server`，聚合时不需要重写绑定；`artifact.url` 保持指向
+  源站绝对 URL，完整性以 hash 校验为准。
+- **门控**：聚合接口自行决定鉴权；v1 的 SiteDocument 本身仍保持匿名可读。
 
 ### 7.3 站点添加深链
 
@@ -310,10 +306,11 @@ GET {origin}/.well-known/mc-interop-v1.json        → SiteDocument（200）
 
 ## 8. 启动器侧行为规范
 
-1. **单源原则与发现**：启动器**只访问本家 origin**，不实现多站客户端聚合（`peers`
-   字段可忽略；多站切换 = 本家站点列表切换后重新发现）。用户给 origin（或深链）→
-   `GET /.well-known/mc-interop-v1.json`。超时 15s、响应上限 1 MiB、
-   失败重试 3 次退避；发现失败给出明确错误（DNS/TLS/404/格式），不得静默降级为空目录。
+1. **单源原则与发现**：启动器默认只访问本家 `/site`（`packs[]` 只含本站实例）；
+   `peers` 字段可用于发现友站，友站实例由独立的聚合接口（如 `/friends`）或启动器
+   自行读取，但不得写回本家 SiteDocument。多站切换 = 本家站点列表切换后重新发现。
+   用户给 origin（或深链）→ `GET /.well-known/mc-interop-v1.json`。超时 15s、响应上限
+   1 MiB、失败重试 3 次退避；发现失败给出明确错误（DNS/TLS/404/格式），不得静默降级为空目录。
 2. **缓存**：持久化最近 SiteDocument + ETag；启动时与每 6 小时条件请求刷新；
    站点切换主版本路径（如改配为 `mc-interop-v2.json`）视为新站点协议，弹窗确认后重新解释。
 3. **目录页**：`packs` 按数组顺序渲染；有 `artifact` 的条目展示当前 `revision`，没有
@@ -371,8 +368,8 @@ v1 不再做「周目 / 发布控制台」双源聚合。站点在生成条目�
 ### 9.5 落地顺序
 
 1. 定稿本规范 → 2. 出口序列化器（整合包 + 服务器合并投影）→ 3. legacy-sitmc-1 ingest
-   导入 → 4. YMCL canonical 适配器（目录/安装/进服）→ 5. 站点侧互采聚合（peers
-   拉取/合并/溯源）与深链。
+   导入 → 4. YMCL canonical 适配器（目录/安装/进服）→ 5. 可选聚合接口（peers
+   拉取/合并/溯源，不写回 SiteDocument）与深链。
 
 ## 10. 安全
 
@@ -385,7 +382,7 @@ v1 不再做「周目 / 发布控制台」双源聚合。站点在生成条目�
 ## 附录 A：字段速查
 
 - SiteDocument：`site{id,name,description,domain}` / `packs[]` / `peers[]` / `updatedAt`
-- PackEntry：`id` / `name` / `summary` / `source?{siteId,domain,stale}` / `revision?` / `gameVersion` / `loader` / `loaderVersion?` / `artifact?{format,url,size,sha1,sha512,distribution{system,packId,versionId}}` / `server{address,port?}`
+- PackEntry：`id` / `name` / `summary` / `revision?` / `gameVersion` / `loader` / `loaderVersion?` / `artifact?{format,url,size,sha1,sha512,distribution{system,packId,versionId}}` / `server{address,port?}`
 - Server（内嵌）：`address` / `port?`
 - PeerEntry：`siteId` / `name?` / `description?` / `domain` / `manifestUrl`
 
@@ -478,10 +475,9 @@ v1 不再做「周目 / 发布控制台」双源聚合。站点在生成条目�
       "type": "object",
       "required": ["id", "name", "gameVersion", "loader", "server"],
       "properties": {
-        "id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]{1,257}$" },
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,128}$" },
         "name": { "type": "string", "minLength": 1, "maxLength": 128 },
         "summary": { "type": "string", "maxLength": 2000 },
-        "source": { "$ref": "#/definitions/source" },
         "revision": { "type": "integer", "minimum": 0 },
         "gameVersion": { "type": "string", "minLength": 1, "maxLength": 64 },
         "loader": { "enum": ["vanilla", "fabric", "forge", "neoforge", "quilt"] },
@@ -514,8 +510,8 @@ v1 不再做「周目 / 发布控制台」双源聚合。站点在生成条目�
 ## 附录 C：完整 SiteDocument 示例
 
 下面是 SIT Minecraft 在 2026-10-21 的一个完整出口示例，可直接作为实现与联调参照。
-示例中的 hash 与端口仅用于展示格式；`packs` 使用内联数组，友站条目若被合并会额外携带
-`source`，本示例只展示本家条目。
+示例中的 hash 与端口仅用于展示格式；`packs` 使用内联数组，只包含本家条目，不含
+`source`。
 
 ```json
 {

@@ -43,10 +43,12 @@ final class SiteDocumentService
     {
         $settings = $this->repository->settings();
         $domain = $this->domain($requestRoot);
-        $peer = $this->aggregator->peerDocuments();
 
         $builder = new SiteDocumentBuilder($domain);
 
+        // `packs[]` is the site's own catalog only. Friend instances are
+        // exposed separately by friends(), not mixed into the canonical
+        // SiteDocument.
         $document = $builder->build($this->repository->interopRows(), [
             'site' => [
                 'id' => $settings['site_id'],
@@ -55,13 +57,12 @@ final class SiteDocumentService
                 'domain' => $domain,
             ],
             'peers' => $this->repository->peers(true),
-            'peerDocuments' => $peer['documents'],
             'settingsUpdatedAt' => $this->repository->interopUpdatedAt(),
         ]);
 
         return [
             'document' => $document,
-            'diagnostics' => array_merge($builder->diagnostics(), $peer['diagnostics']),
+            'diagnostics' => $builder->diagnostics(),
             'domain' => $domain,
             'settings' => $settings,
         ];
