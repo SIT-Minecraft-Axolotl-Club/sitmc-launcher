@@ -323,6 +323,31 @@ final class InteropRepository
         return null;
     }
 
+    public function peerByManifest(string $manifestUrl): ?array
+    {
+        $manifestUrl = InteropRules::publicHttpsUrl($manifestUrl);
+
+        if ($manifestUrl === null) {
+            return null;
+        }
+
+        foreach ($this->peers() as $peer) {
+            $candidate = $peer['manifest_url'];
+
+            if ($candidate === null) {
+                $candidate = rtrim((string) $peer['origin'], '/').InteropRules::WELL_KNOWN_PATH;
+            }
+
+            $candidate = InteropRules::publicHttpsUrl($candidate);
+
+            if ($candidate !== null && $candidate === $manifestUrl) {
+                return $peer;
+            }
+        }
+
+        return null;
+    }
+
     /**
      * Replace a temporary/pending site id with the id advertised by the peer.
      * Returns false when the new id is already used, so the caller can keep the

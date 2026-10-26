@@ -163,7 +163,7 @@ GET /api/launcher/interop/v1/friends   （同一个响应，兼容旧地址）
 
 ### 友站聚合
 
-- 添加友站只需要填根域名；后台会读取 `https://{domain}/.well-known/mc-interop-v1.json`，从 `site` 块取站点标识、名称和描述，不需要手填。
+- 添加友站填**完整的清单地址**，例如 `https://hall.mc.taru.xj.cn/api/plugins/mc-interop/.well-known/mc-interop-v1.json`；后台会从清单的 `site` 块取站点标识、名称和描述。只填根域名也兼容，会自动补 `/.well-known/mc-interop-v1.json`。
 - 友站离线也可以添加：先用 `pending-...` 占位，首次成功同步后自动换成对方真实的 `site.id`。离线期间状态显示「未同步/待识别」，不会影响其他友站；占位 ID 不会出现在公开的 `peers[]` 里。
 - 后台维护友站 allowlist；默认每 5 分钟检查一次。没有 cron 时，到点后由下一次访问清单触发；后台「定时同步」里给出 crontab 命令，可以固定每 5 分钟拉取，不再依赖访问。单次拉取 15 秒超时、3 次退避重试。
 - 后台「友站」里可以点「同步」或「同步全部」手动触发。

@@ -258,7 +258,7 @@ interop:
     domain-hint: "Root domain only, e.g. mc.yudream.app. Saving reads https://{domain}/.well-known/mc-interop-v1.json; if that fails it is still saved for a later sync."
     description: "Description"
     manifest_url: "Manifest URL"
-    manifest_url-hint: "Empty uses https://{domain}/.well-known/mc-interop-v1.json."
+    manifest_url-hint: "Full HTTPS manifest URL, e.g. https://hall.mc.taru.xj.cn/api/plugins/mc-interop/.well-known/mc-interop-v1.json; a bare domain is expanded to /.well-known/mc-interop-v1.json."
 
   state:
     ok: "OK"
@@ -316,7 +316,7 @@ interop:
     title: "Peer"
     create-title: "Add peer"
     edit-title: "Edit peer :id"
-    auto-hint: "Only the root domain is required; site id, name and description are read from the peer's mc-interop document."
+    auto-hint: "Paste the peer's full manifest URL; site id, name and description are read from it. A bare domain is also accepted."
 
   status:
     settings-saved: "Interop settings saved."
@@ -337,6 +337,7 @@ interop:
     peer-domain-invalid: "The peer root domain must be a host such as mc.yudream.app, without https:// or a path."
     peer-manifest-url-invalid: "The peer manifest URL must be a public absolute HTTPS URL."
     peer-site-id-taken: "That site id is already in the peer list."
+    peer-manifest-taken: "That manifest URL is already in the peer list."
     peer-domain-taken: "That domain is already in the peer list."
     peer-site-id-collision: "The peer's real site id collides with an existing peer, so it stays offline."
     peer-self: "This site cannot be added as its own peer."

@@ -258,7 +258,7 @@ interop:
     domain-hint: "只填根域名，例如 mc.yudream.app。保存时会自动读取 https://{domain}/.well-known/mc-interop-v1.json；读取失败也会先保存，等待之后的同步。"
     description: "描述"
     manifest_url: "清单地址"
-    manifest_url-hint: "留空自动使用 https://{domain}/.well-known/mc-interop-v1.json。"
+    manifest_url-hint: "填完整的 HTTPS 清单地址，例如 https://hall.mc.taru.xj.cn/api/plugins/mc-interop/.well-known/mc-interop-v1.json；只填根域名时会自动补 /.well-known/mc-interop-v1.json。"
 
   state:
     ok: "正常"
@@ -316,7 +316,7 @@ interop:
     title: "友站"
     create-title: "添加友站"
     edit-title: "编辑友站 :id"
-    auto-hint: "只需要填根域名；站点标识、名称和描述会从对方的 mc-interop 清单自动读取。"
+    auto-hint: "填对方完整的清单地址；站点标识、名称和描述会从清单自动读取。只填根域名也兼容。"
 
   status:
     settings-saved: "互操作设置已保存。"
@@ -337,6 +337,7 @@ interop:
     peer-domain-invalid: "友站根域名只能是 host，例如 mc.yudream.app，不能带 https:// 或路径。"
     peer-manifest-url-invalid: "友站清单地址必须是公开 HTTPS 绝对地址。"
     peer-site-id-taken: "这个站点标识已经被添加。"
+    peer-manifest-taken: "这个清单地址已经添加过了。"
     peer-domain-taken: "这个域名已经添加过了。"
     peer-site-id-collision: "友站上线后的站点标识和已有友站冲突，暂时保持离线状态。"
     peer-self: "不能把本站自己添加为友站。"

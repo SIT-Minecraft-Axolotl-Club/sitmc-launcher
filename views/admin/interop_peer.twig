@@ -61,15 +61,15 @@
           {% endif %}
 
           <div class="form-group">
-            <label>{{ trans('sitmc-launcher::launcher.interop.field.domain') }}</label>
+            <label>{{ trans('sitmc-launcher::launcher.interop.field.manifest_url') }}</label>
             <input
               class="form-control"
-              name="domain"
-              value="{{ domain }}"
-              placeholder="mc.yudream.app"
+              name="manifest_url"
+              value="{{ manifest_url }}"
+              placeholder="https://hall.mc.taru.xj.cn/api/plugins/mc-interop/.well-known/mc-interop-v1.json"
             >
             <small class="form-text text-muted">
-              {{ trans('sitmc-launcher::launcher.interop.field.domain-hint') }}
+              {{ trans('sitmc-launcher::launcher.interop.field.manifest_url-hint') }}
             </small>
           </div>
 

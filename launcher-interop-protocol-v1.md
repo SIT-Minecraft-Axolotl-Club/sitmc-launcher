@@ -275,7 +275,8 @@ v1 的 SiteDocument 只描述**本站自己**的实例；`packs[]` 不允许混�
 ```
 
 - `siteId` 站内唯一；`domain` 是友站根域名（host，不带 scheme/path）；`manifestUrl`
-  是可直接拉取的 v1 清单地址。
+  是可直接拉取的完整 v1 清单 URL，允许嵌套路径（如反代后的
+  `https://hall.example.cn/api/plugins/mc-interop/.well-known/mc-interop-v1.json`）。
 - `name`、`description` 可选，仅展示。
 - `site` 标识本站自己；`peers[]` 只列已知友站，**不重复列本站**，供其他站点互相发现。
   `peers` 始终输出，没有友站时为 `[]`。启动器可完全忽略该字段。
