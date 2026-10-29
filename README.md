@@ -90,6 +90,16 @@ GET /api/launcher/interop/v1/friends   （同一个响应，兼容旧地址）
 - 没有整合包的友站实例：`revision` 和 `pack` 为 `null`，`minecraft.loader` 为 `null`。
 - 响应带 `ETag` / `If-None-Match` / `304`。
 
+### 精选实例（启动器主页）
+
+`GET /api/launcher/featured` 输出管理员勾选的精选实例，**只给启动器主页用**，不会出现在 mc-interop 文档里。
+
+- 后台「对外清单 → 精选实例」里勾选；来源可以是本站实例，也可以是已同步的友站实例。
+- 输出结构沿用 manifest 的 `instances[]`；每条 `sort` 固定为 `-1`，启动器把它排在所有常规实例前面。
+- 勾选友站实例时，`id` 带来源前缀（如 `ysumc:survival`）；本站实例保持原 id。
+- 友站实例被对方下架、或友站被删除后，对应精选条目自动从输出中消失；勾选记录保留，恢复同步后继续生效。
+- 响应带 `ETag` / `If-None-Match` / `304`。
+
 示例（两个友站）：
 
 ```json
@@ -261,6 +271,7 @@ php tests/run.php
 | `sitmc_launcher_interop_peers` | mc-interop 友站 allowlist(站点标识、名称、描述、origin、清单地址、是否启用) |
 | `sitmc_launcher_interop_snapshots` | 每个友站最近一次成功拉取的 SiteDocument 快照(ETag、原始文档、拉取时间、是否过期、最近错误) |
 | `sitmc_launcher_interop_servers` | 每个实例的「上架」选择(`published`,默认关闭);旧版互操作字段保留兼容 |
+| `sitmc_launcher_interop_featured` | 精选实例(启动器主页):`peer_site_id` 为空表示本站实例,否则指向友站;`sort` 决定主页顺序 |
 | `sitmc_launcher_interop_endpoints` | 旧版多线路字段,v1 不再使用(保留兼容) |
 
 表名不加前缀,但都通过 Laravel 的 `Schema`/`DB` 门面访问,所以在 `.env` 里配了 `DB_PREFIX` 也会正常工作。

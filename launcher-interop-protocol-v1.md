@@ -182,8 +182,8 @@ GET {origin}/.well-known/mc-interop-v1.json        → SiteDocument（200）
 | `artifact` | 可选；有整合包时必填对象，无整合包（纯服务器 / vanilla）时整个字段省略。 |
 | `artifact.format` | `mrpack` \| `multimc` \| `curseforge-zip` \| `server-zip` \| `raw`；声明**artifact 容器格式**，ingest 适配器清单见 §6.1。 |
 | `artifact.url` | 必填、绝对 HTTPS URL，直接作为下载地址；v1 不定义镜像列表。 |
-| `artifact.size` | 必填，字节数。 |
-| `artifact.sha1` / `sha512` | 两个键都输出，未知的写 `null`；至少一个非 `null`。`sha512` 建议必给，`sha1` 为兼容保留；两者同时存在时以 `sha512` 为准。 |
+| `artifact.size` | 本站托管时必填，字节数。外部托管时可不填（输出 `null`）：启动器将无法预知大小、断点续传，也不会做长度校验。 |
+| `artifact.sha1` / `sha512` | 两个键都输出，未知的写 `null`。本站托管时至少一个非 `null`；外部托管时允许都为 `null`，此时启动器无法校验完整性，应按「不校验」策略处理或明确提示。`sha512` 建议必给，两者同时存在时以 `sha512` 为准。 |
 | `artifact.distribution` | 可选。声明可增量对账的分发后端，当前登记：`yda-launcher-v2`（launcher-adapter `/v2/packs/**` head→manifest→files 对账）、`yap-mip`（ymcl-adapter CAS）。不支持的启动器忽略它、整包装。 |
 | `server` | 必填；绑定一个服务器地址，最多一个。 |
 | `server.address` | 必填；玩家可见主地址。 |
@@ -451,15 +451,11 @@ v1 不再做「周目 / 发布控制台」双源聚合。站点在生成条目�
       "properties": {
         "format": { "enum": ["mrpack", "multimc", "curseforge-zip", "server-zip", "raw"] },
         "url": { "type": "string", "format": "uri", "pattern": "^https://" },
-        "size": { "type": "integer", "minimum": 1 },
+        "size": { "type": ["integer", "null"], "minimum": 1 },
         "sha1": { "type": ["string", "null"], "pattern": "^[0-9a-f]{40}$" },
         "sha512": { "type": ["string", "null"], "pattern": "^[0-9a-f]{128}$" },
         "distribution": { "$ref": "#/definitions/distribution" }
       },
-      "anyOf": [
-        { "properties": { "sha1": { "type": "string" } } },
-        { "properties": { "sha512": { "type": "string" } } }
-      ],
       "additionalProperties": true
     },
     "source": {

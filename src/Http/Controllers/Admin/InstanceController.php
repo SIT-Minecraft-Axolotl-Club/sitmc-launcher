@@ -161,7 +161,10 @@ final class InstanceController
 
         $values = $request->validate([
             'url' => ['required', 'string', 'max:512'],
-            'sha1' => ['required', 'string', 'regex:/^[0-9a-fA-F]{40}$/'],
+            // Externally hosted packs may omit the digest: this site never saw
+            // the file, so it cannot compute one. Launchers fall back to
+            // "no verification" for such artifacts.
+            'sha1' => ['nullable', 'string', 'regex:/^[0-9a-fA-F]{40}$/'],
             'size' => ['nullable', 'integer', 'min:1'],
         ]);
 
@@ -177,7 +180,7 @@ final class InstanceController
 
         $this->repository->savePack($instanceId, $revision, [
             'url' => $values['url'],
-            'sha1' => strtolower($values['sha1']),
+            'sha1' => isset($values['sha1']) ? strtolower($values['sha1']) : null,
             'size' => $values['size'] ?? 0,
             'created_at' => now(),
             'updated_at' => now(),

@@ -41,6 +41,91 @@ final class InteropController
     }
 
     /**
+     * Curated instances for the launcher home page, in the legacy manifest
+     * instance shape. The administrator picks from local and peer instances;
+     * featured entries always carry `sort = -1` so the launcher renders them
+     * before everything else. This endpoint is launcher-only: the selection is
+     * never part of the mc-interop documents.
+     */
+    public function featured(Request $request): Response
+    {
+        $this->documents->scheduleRefresh();
+
+        $site = $this->documents->document($request->root())['document'];
+        $friends = $this->documents->friends($request->root())['document'];
+        $featured = $this->repository->featured();
+
+        $local = [];
+        $peers = [];
+
+        foreach ($site['packs'] as $entry) {
+            $local[(string) $entry['id']] = $entry;
+        }
+
+        foreach ($friends['sites'] ?? [] as $siteRow) {
+            $peers[(string) $siteRow['site_id']] = $siteRow;
+        }
+
+        $instances = [];
+
+        foreach ($featured as $row) {
+            $peerSiteId = $row['peer_site_id'];
+            $entry = $peerSiteId === null
+                ? ($local[$row['instance_id']] ?? null)
+                : ($peers[$peerSiteId]['instances'][$row['instance_id']] ?? null);
+
+            if ($entry === null) {
+                continue;
+            }
+
+            $artifact = is_array($entry['artifact'] ?? null) ? $entry['artifact'] : null;
+            $loader = $entry['loader'] ?? null;
+            $name = (string) ($entry['name'] ?? $entry['id'] ?? '');
+
+            $instances[] = [
+                'id' => $peerSiteId === null
+                    ? (string) $entry['id']
+                    : $peerSiteId.':'.(string) $entry['id'],
+                'name' => $row['label'] !== null && $row['label'] !== '' ? $row['label'] : $name,
+                'description' => $entry['summary'] ?? null,
+                'icon_url' => null,
+                // Featured instances sort before everything else.
+                'sort' => -1,
+                'revision' => $artifact === null ? null : (int) ($entry['revision'] ?? 0),
+                'minecraft' => [
+                    'game_version' => (string) ($entry['gameVersion'] ?? ''),
+                    'loader' => $loader === 'vanilla' ? null : $loader,
+                    'loader_version' => $entry['loaderVersion'] ?? null,
+                ],
+                'pack' => $artifact === null ? null : [
+                    'kind' => (string) ($artifact['format'] ?? 'mrpack'),
+                    'url' => (string) ($artifact['url'] ?? ''),
+                    'sha1' => $artifact['sha1'] ?? null,
+                    'size' => isset($artifact['size']) ? (int) $artifact['size'] : null,
+                ],
+                'server' => [
+                    'address' => (string) ($entry['server']['address'] ?? ''),
+                    'port' => isset($entry['server']['port']) ? (int) $entry['server']['port'] : null,
+                ],
+                'required' => false,
+            ];
+        }
+
+        $document = [
+            'schema' => 1,
+            'generated_at' => InteropRules::isoUtc(time()),
+            'launcher' => [
+                'min_version' => null,
+                'latest_version' => null,
+                'force_update' => false,
+            ],
+            'instances' => $instances,
+        ];
+
+        return $this->respond($request, $document);
+    }
+
+    /**
      * Token-protected endpoint for a real cron job: pulls every enabled peer
      * regardless of catalog traffic. The admin page shows the exact command.
      */

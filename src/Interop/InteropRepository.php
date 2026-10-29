@@ -240,11 +240,89 @@ final class InteropRepository
     }
 
     /**
+     * Featured selection for the launcher home page. `peer_site_id` null means
+     * a local instance; otherwise it names the peer site the instance came
+     * from. Featured entries are launcher-only and never enter the interop
+     * documents.
+     *
+     * @return array<int, array{peer_site_id: ?string, instance_id: string, label: ?string, sort: int}>
+     */
+    public function featured(): array
+    {
+        return DB::table(LauncherSchema::INTEROP_FEATURED)
+            ->orderBy('sort')
+            ->orderBy('id')
+            ->get()
+            ->map(static fn ($row): array => [
+                'peer_site_id' => $row->peer_site_id === null ? null : (string) $row->peer_site_id,
+                'instance_id' => (string) $row->instance_id,
+                'label' => $row->label === null ? null : (string) $row->label,
+                'sort' => (int) $row->sort,
+            ])
+            ->all();
+    }
+
+    /**
+     * Replaces the whole featured selection. Keys are `local:{instanceId}` for
+     * own instances and `{peerSiteId}:{instanceId}` for peer instances.
+     *
+     * @param  array<int, string>  $keys
+     */
+    public function saveFeatured(array $keys): void
+    {
+        $rows = [];
+
+        foreach ($keys as $index => $key) {
+            $key = (string) $key;
+
+            if ($key === '') {
+                continue;
+            }
+
+            if (str_starts_with($key, 'local:')) {
+                $instanceId = substr($key, 6);
+
+                if ($instanceId === '' || strlen($instanceId) > 191) {
+                    continue;
+                }
+
+                $rows[] = ['peer_site_id' => null, 'instance_id' => $instanceId];
+            } else {
+                $separator = strpos($key, ':');
+
+                if ($separator === false || $separator === 0) {
+                    continue;
+                }
+
+                $peerSiteId = substr($key, 0, $separator);
+                $instanceId = substr($key, $separator + 1);
+
+                if ($peerSiteId === '' || strlen($peerSiteId) > 64 || $instanceId === '' || strlen($instanceId) > 191) {
+                    continue;
+                }
+
+                $rows[] = ['peer_site_id' => $peerSiteId, 'instance_id' => $instanceId];
+            }
+        }
+
+        DB::transaction(function () use ($rows): void {
+            DB::table(LauncherSchema::INTEROP_FEATURED)->delete();
+
+            foreach ($rows as $index => $row) {
+                DB::table(LauncherSchema::INTEROP_FEATURED)->insert($row + [
+                    'sort' => $index,
+                    'created_at' => Carbon::now(),
+                    'updated_at' => Carbon::now(),
+                ]);
+            }
+        });
+    }
+
+    /**
      * Token used by the cron endpoint. Generated lazily and stored as a setting,
      * so the web UI can show a ready-to-paste cron command.
      */
-    public function syncToken(): string
-    {
+    public function syncToken(): string    {
         $token = trim((string) DB::table(LauncherSchema::SETTINGS)
             ->where('name', self::SETTING_SYNC_TOKEN)
             ->value('value'));

@@ -166,7 +166,8 @@ packs:
   limits: "PHP limits: :upload per file, :post per POST. Use the external URL form below for packs larger than that."
   upload-button: "Upload and publish"
   external-title: "Register an external pack"
-  external-intro: "Use this when the pack already lives elsewhere (object storage or a CDN): clients download that URL directly."
+  external-intro: "Use this when the pack already lives elsewhere (object storage or a CDN): clients download that URL directly. The SHA-1 and size may be left empty, but clients then cannot verify integrity."
+  external-sha1-hint: "Optional. 40 lowercase hex characters; when empty clients skip integrity verification. Providing it is strongly recommended."
   external-button: "Register and publish"
   too-large: "The pack exceeds the upload size PHP allows. Raise upload_max_filesize / post_max_size in php.ini, or use an external URL."
   error:
@@ -298,6 +299,14 @@ interop:
     save-failed: "Save failed; try again"
     save: "Save"
 
+  featured:
+    title: "Featured instances"
+    intro: "For the launcher home page: selected instances are served at /api/launcher/featured first (sort = -1). Pick from local and peer instances; they never appear in the interop documents."
+    column: "Featured"
+    origin: "Origin"
+    own: "This site"
+    empty: "Nothing to pick yet; publish local instances or sync peers first."
+
   peers:
     title: "Peers"
     intro: "Sites to sync from."
@@ -331,6 +340,7 @@ interop:
     peers-synced: "Peer sync finished: :ok ok, :failed failed."
     peers-sync-busy: "A sync is already running; try again shortly."
     token-rotated: "Sync token rotated. Update the crontab command."
+    featured-saved: "Featured selection saved: :count instance(s)."
 
   problem:
     site-domain-invalid: "The site root domain must be a host such as skin.sitmc.club, without https:// or a path."
@@ -364,7 +374,8 @@ interop:
     pack-revision-missing: "No pack exists for the current revision, so the instance is not published."
     artifact-url-invalid: "The artifact URL is not public HTTPS, so the instance is not published."
     artifact-size-missing: "The artifact size is missing, so the instance is not published."
-    artifact-hash-missing: "The artifact has no SHA-1/SHA-512, so the instance is not published."
+    artifact-hash-missing: "A locally hosted artifact has no SHA-1/SHA-512, so the instance is not published."
+    artifact-unverified: "An externally hosted artifact has no size or digest; it is published but clients cannot verify integrity."
     site-id-invalid: "The site id is invalid; fell back to sitmc."
     site-domain-invalid: "The site root domain is invalid; fell back to the request host."
     peer-config-invalid: "The peer configuration is incomplete and was skipped."

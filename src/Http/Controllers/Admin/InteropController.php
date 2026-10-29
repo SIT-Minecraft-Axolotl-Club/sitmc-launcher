@@ -32,6 +32,7 @@ final class InteropController
     public function index(Request $request): View
     {
         $result = $this->documents->document($request->root());
+        $friends = $this->documents->friends($request->root())['document'];
         $instances = $this->repository->interopRows();
 
         foreach ($instances as $index => $instance) {
@@ -47,7 +48,41 @@ final class InteropController
             $instances[$index]['current_pack'] = $current;
             $instances[$index]['has_packs'] = $instance['packs'] !== [];
             $instances[$index]['has_server'] = trim((string) ($instance['server_address'] ?? '')) !== '';
+            $instances[$index]['featured_key'] = 'local:'.$instance['id'];
         }
+
+        // Peer instances, flattened to the same checkbox shape as local ones.
+        $peerInstances = [];
+
+        foreach ($friends['sites'] ?? [] as $siteRow) {
+            foreach ($siteRow['instances'] ?? [] as $instance) {
+                $rawId = (string) $instance['id'];
+
+                // The friends view prefixes ids with the site; strip it back off.
+                $raw = str_starts_with($rawId, $siteRow['site_id'].':')
+                    ? substr($rawId, strlen($siteRow['site_id']) + 1)
+                    : $rawId;
+
+                $peerInstances[] = [
+                    'peer_site_id' => (string) $siteRow['site_id'],
+                    'peer_name' => (string) $siteRow['name'],
+                    'instance_id' => $raw,
+                    'name' => (string) ($instance['name'] ?? $raw),
+                    'server_address' => (string) ($instance['server']['address'] ?? ''),
+                    'server_port' => isset($instance['server']['port']) ? (int) $instance['server']['port'] : null,
+                    'revision' => $instance['revision'],
+                    'stale' => (bool) $siteRow['stale'],
+                    'featured_key' => $siteRow['site_id'].':'.$raw,
+                ];
+            }
+        }
+
+        $featuredKeys = array_map(
+            static fn (array $row): string => $row['peer_site_id'] === null
+                ? 'local:'.$row['instance_id']
+                : $row['peer_site_id'].':'.$row['instance_id'],
+            $this->repository->featured()
+        );
 
         $peers = $this->aggregator->peerStatus();
 
@@ -64,6 +99,9 @@ final class InteropController
         return view('sitmc-launcher::admin.interop', [
             'settings' => $result['settings'],
             'instances' => $instances,
+            'peerInstances' => $peerInstances,
+            'featuredKeys' => array_fill_keys($featuredKeys, true),
+            'featuredCount' => count($featuredKeys),
             'peers' => $peers,
             'diagnostics' => $this->labelledDiagnostics($result['diagnostics']),
             'packCount' => count($result['document']['packs']),
@@ -71,6 +109,7 @@ final class InteropController
             'wellKnownUrl' => $base.InteropRules::WELL_KNOWN_PATH,
             'endpointUrl' => $base.'/api/launcher/interop/v1/site',
             'friendsUrl' => $base.'/api/launcher/friends',
+            'featuredUrl' => $base.'/api/launcher/featured',
             'syncUrl' => $syncUrl,
             'cronCommand' => "*/5 * * * * curl -fsS -X POST --max-time 300 '".$syncUrl."' >/dev/null",
             'status' => session('sitmc_launcher_status'),
@@ -347,8 +386,56 @@ final class InteropController
             ->with('sitmc_launcher_status', trans('sitmc-launcher::launcher.interop.status.peer-deleted'));
     }
 
-    public function rotateSyncToken(): RedirectResponse
+    /**
+     * Replaces the featured selection for the launcher home page. Keys look
+     * like `local:survival` or `ysumc:survival`; unknown keys are dropped.
+     */
+    public function saveFeatured(Request $request): RedirectResponse
     {
+        $values = $request->validate([
+            'featured' => ['nullable', 'array'],
+            'featured.*' => ['string', 'max:200'],
+        ]);
+
+        $keys = array_values(array_unique(array_map('strval', $values['featured'] ?? [])));
+
+        // Validate against what can actually be served right now: local
+        // instances plus peer instances from the current snapshots.
+        $friends = $this->documents->friends($request->root())['document'];
+        $localIds = [];
+
+        foreach ($this->repository->interopRows() as $row) {
+            $localIds['local:'.(string) $row['id']] = true;
+        }
+
+        $peerKeys = [];
+
+        foreach ($friends['sites'] ?? [] as $siteRow) {
+            foreach ($siteRow['instances'] ?? [] as $instance) {
+                $rawId = (string) $instance['id'];
+                $raw = str_starts_with($rawId, $siteRow['site_id'].':')
+                    ? substr($rawId, strlen($siteRow['site_id']) + 1)
+                    : $rawId;
+
+                $peerKeys[$siteRow['site_id'].':'.$raw] = true;
+            }
+        }
+
+        $valid = array_values(array_filter(
+            $keys,
+            static fn (string $key): bool => isset($localIds[$key]) || isset($peerKeys[$key])
+        ));
+
+        $this->repository->saveFeatured($valid);
+
+        return redirect()
+            ->route('sitmc-launcher.admin.interop.index')
+            ->with('sitmc_launcher_status', trans('sitmc-launcher::launcher.interop.status.featured-saved', [
+                'count' => count($valid),
+            ]));
+    }
+
+    public function rotateSyncToken(): RedirectResponse    {
         $this->repository->rotateSyncToken();
 
         return redirect()

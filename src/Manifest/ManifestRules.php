@@ -85,14 +85,20 @@ final class ManifestRules
     /**
      * Returns the reason a row cannot be published, or null when it can.
      *
+     * Externally hosted packs (rows with their own `url`) tolerate a missing
+     * SHA-1: this site did not receive the file, so it cannot compute the
+     * digest. The URL itself is still validated.
+     *
      * @param  array<string, mixed>  $row
      */
     public static function publishProblem(array $row, string $packUrl): ?string
     {
+        $external = trim((string) ($row['pack_url'] ?? ''));
+
         return self::idProblem((string) ($row['id'] ?? ''))
             ?? self::revisionProblem((int) ($row['revision'] ?? 0))
             ?? ((string) ($row['game_version'] ?? '') === '' ? 'game-version-empty' : null)
-            ?? (self::normalizeSha1($row['pack_sha1'] ?? null) === null ? 'pack-sha1-missing' : null)
+            ?? ($external === '' && self::normalizeSha1($row['pack_sha1'] ?? null) === null ? 'pack-sha1-missing' : null)
             ?? self::packUrlProblem($packUrl);
     }
 }

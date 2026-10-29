@@ -217,8 +217,9 @@ final class SiteDocumentBuilder
     private function artifact(string $id, int $revision, array $row): ?array
     {
         $external = trim((string) ($row['url'] ?? ''));
+        $isExternal = $external !== '';
 
-        $url = $external !== ''
+        $url = $isExternal
             ? InteropRules::publicHttpsUrl($external)
             : InteropRules::httpsUrl(sprintf(
                 'https://%s/api/launcher/packs/%s/%d',
@@ -233,18 +234,27 @@ final class SiteDocumentBuilder
         }
 
         $size = InteropRules::size($row['size'] ?? null);
-
-        if ($size === null) {
-            $this->diagnose('artifact-size-missing', $id, ['revision' => $revision]);
-            return null;
-        }
-
         $sha1 = InteropRules::sha1($row['sha1'] ?? null);
         $sha512 = InteropRules::sha512($row['sha512'] ?? null);
 
-        if ($sha1 === null && $sha512 === null) {
-            $this->diagnose('artifact-hash-missing', $id, ['revision' => $revision]);
-            return null;
+        if ($isExternal) {
+            // Hosted elsewhere: this site cannot recompute the digest on
+            // upload, so a missing size or hash is tolerated. The artifact is
+            // still published with whatever is known; launchers that require
+            // both values will show it but cannot verify it.
+            if ($size === null && $sha1 === null && $sha512 === null) {
+                $this->diagnose('artifact-unverified', $id, ['revision' => $revision, 'url' => $url]);
+            }
+        } else {
+            if ($size === null) {
+                $this->diagnose('artifact-size-missing', $id, ['revision' => $revision]);
+                return null;
+            }
+
+            if ($sha1 === null && $sha512 === null) {
+                $this->diagnose('artifact-hash-missing', $id, ['revision' => $revision]);
+                return null;
+            }
         }
 
         return [

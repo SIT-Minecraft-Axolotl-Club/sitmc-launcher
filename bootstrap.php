@@ -111,6 +111,9 @@ return function ($plugin) {
                 $router->get('friends', [InteropController::class, 'friends'])
                     ->name('sitmc-launcher.friends');
 
+                $router->get('featured', [InteropController::class, 'featured'])
+                    ->name('sitmc-launcher.featured');
+
                 $router->get('packs/{instanceId}/{revision}', [PackController::class, 'show'])
                     ->where(['instanceId' => '[A-Za-z0-9_-]+', 'revision' => '[0-9]+'])
                     ->name('sitmc-launcher.pack');
@@ -284,6 +287,9 @@ return function ($plugin) {
 
                 $router->post('interop/publications', [AdminInteropController::class, 'savePublications'])
                     ->name('sitmc-launcher.admin.interop.publications');
+
+                $router->post('interop/featured', [AdminInteropController::class, 'saveFeatured'])
+                    ->name('sitmc-launcher.admin.interop.featured');
 
                 $router->post('interop/sync-token', [AdminInteropController::class, 'rotateSyncToken'])
                     ->name('sitmc-launcher.admin.interop.sync-token');

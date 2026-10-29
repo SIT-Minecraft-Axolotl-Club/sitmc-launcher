@@ -37,6 +37,8 @@ final class LauncherSchema
 
     public const INTEROP_ENDPOINTS = 'sitmc_launcher_interop_endpoints';
 
+    public const INTEROP_FEATURED = 'sitmc_launcher_interop_featured';
+
     /**
      * The guard is per process: one request resolves both the legacy repository
      * and the interop repository, so without it the same `hasTable` checks would
@@ -193,6 +195,22 @@ final class LauncherSchema
             });
         }
 
+        // Featured selection drives the launcher's home page only; it never
+        // appears in the mc-interop documents. Featured entries may reference
+        // peer instances too, hence the nullable peer site id.
+        if (! Schema::hasTable(self::INTEROP_FEATURED)) {
+            Schema::create(self::INTEROP_FEATURED, static function (Blueprint $table): void {
+                $table->bigIncrements('id');
+                $table->string('peer_site_id', 64)->nullable()->index();
+                $table->string('instance_id', 191);
+                $table->string('label', 128)->nullable();
+                $table->unsignedInteger('sort')->default(0);
+                $table->timestamps();
+
+                $table->unique(['peer_site_id', 'instance_id']);
+            });
+        }
+
         if (! Schema::hasTable(self::INTEROP_ENDPOINTS)) {
             Schema::create(self::INTEROP_ENDPOINTS, static function (Blueprint $table): void {
                 $table->bigIncrements('id');
@@ -220,6 +238,7 @@ final class LauncherSchema
         self::$installed = false;
 
         Schema::dropIfExists(self::INTEROP_ENDPOINTS);
+        Schema::dropIfExists(self::INTEROP_FEATURED);
         Schema::dropIfExists(self::INTEROP_SERVERS);
         Schema::dropIfExists(self::INTEROP_SNAPSHOTS);
         Schema::dropIfExists(self::INTEROP_PEERS);

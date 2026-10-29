@@ -166,7 +166,8 @@ packs:
   limits: "PHP 限制：单文件 :upload，POST :post。整合包超过该限制时请改用下面的外部链接。"
   upload-button: "上传并发布新版本"
   external-title: "登记外链整合包"
-  external-intro: "整合包已放在别处（对象存储/CDN）时用这里：客户端会直接去下载该地址。"
+  external-intro: "整合包已放在别处（对象存储/CDN）时用这里：客户端会直接去下载该地址。SHA-1 和大小都可以留空，但客户端将无法校验完整性。"
+  external-sha1-hint: "可选。40 位小写十六进制；留空时客户端不做完整性校验，建议尽量提供。"
   external-button: "登记并发布新版本"
   too-large: "整合包超过了 PHP 允许的上传大小，请调大 php.ini 的 upload_max_filesize / post_max_size，或改用外部链接。"
   error:
@@ -298,6 +299,14 @@ interop:
     save-failed: "保存失败，请重试"
     save: "保存"
 
+  featured:
+    title: "精选实例"
+    intro: "给启动器主页用：勾选的实例会通过 /api/launcher/featured 输出在最前面（sort = -1）。可以从本站和友站的实例里选，不会出现在对外清单里。"
+    column: "精选"
+    origin: "来源"
+    own: "本站"
+    empty: "还没有可选择的实例；先上架本站实例或同步友站。"
+
   peers:
     title: "友站"
     intro: "这里列出要同步的友站。"
@@ -331,6 +340,7 @@ interop:
     peers-synced: "友站同步完成：成功 :ok，失败 :failed。"
     peers-sync-busy: "已有同步任务在跑，请稍后再试。"
     token-rotated: "同步 token 已重置，请更新 crontab 命令。"
+    featured-saved: "精选已保存：当前精选 :count 个实例。"
 
   problem:
     site-domain-invalid: "站点根域名只能是 host，例如 skin.sitmc.club，不能带 https:// 或路径。"
@@ -364,7 +374,8 @@ interop:
     pack-revision-missing: "找不到当前 revision 对应的整合包，该实例不会出站。"
     artifact-url-invalid: "整合包地址不是公开 HTTPS，该实例不会出站。"
     artifact-size-missing: "缺少整合包文件大小，该实例不会出站。"
-    artifact-hash-missing: "缺少 SHA-1/SHA-512，该实例不会出站。"
+    artifact-hash-missing: "本站托管的整合包缺少 SHA-1/SHA-512，该实例不会出站。"
+    artifact-unverified: "外部托管的整合包缺少大小和哈希，已发布但客户端无法校验完整性。"
     site-id-invalid: "站点标识不合法，已回退为 sitmc。"
     site-domain-invalid: "站点根域名不合法，已回退到请求域名。"
     peer-config-invalid: "友站配置不完整，已跳过。"
