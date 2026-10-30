@@ -181,6 +181,10 @@ return function ($plugin) {
                     ->where('instanceId', '[A-Za-z0-9_-]+')
                     ->name('sitmc-launcher.admin.destroy');
 
+                $router->post('instances/{instanceId}/featured', [InstanceController::class, 'toggleFeatured'])
+                    ->where('instanceId', '[A-Za-z0-9_-]+')
+                    ->name('sitmc-launcher.admin.featured.toggle');
+
                 $router->post('instances/{instanceId}/packs', [InstanceController::class, 'storePack'])
                     ->where('instanceId', '[A-Za-z0-9_-]+')
                     ->name('sitmc-launcher.admin.packs.store');
@@ -290,9 +294,6 @@ return function ($plugin) {
 
                 $router->post('interop/publications', [AdminInteropController::class, 'savePublications'])
                     ->name('sitmc-launcher.admin.interop.publications');
-
-                $router->post('interop/featured', [AdminInteropController::class, 'saveFeatured'])
-                    ->name('sitmc-launcher.admin.interop.featured');
 
                 $router->post('interop/sync-token', [AdminInteropController::class, 'rotateSyncToken'])
                     ->name('sitmc-launcher.admin.interop.sync-token');

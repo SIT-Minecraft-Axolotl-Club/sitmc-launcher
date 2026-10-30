@@ -219,6 +219,8 @@ problem:
 status:
   created: "Instance created. Upload its pack next."
   saved: "Instance saved."
+  featured-on: "Marked as featured; the home-page manifest now lists it first (sort = -1)."
+  featured-off: "Removed from featured."
   deleted: "Instance and its packs deleted."
   pack-uploaded: "Pack published as revision :revision."
   pack-activated: "Rolled back to revision :revision."

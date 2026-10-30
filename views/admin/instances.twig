@@ -38,6 +38,7 @@
                   <th>{{ trans('sitmc-launcher::launcher.field.revision') }}</th>
                   <th>{{ trans('sitmc-launcher::launcher.field.game_version') }}</th>
                   <th>{{ trans('sitmc-launcher::launcher.instances.publish') }}</th>
+                  <th style="width: 72px;">{{ trans('sitmc-launcher::launcher.interop.featured.column') }}</th>
                   <th></th>
                 </tr>
               </thead>
@@ -70,6 +71,21 @@
                           {{ trans('sitmc-launcher::launcher.instances.published') }}
                         </span>
                       {% endif %}
+                    </td>
+                    <td class="align-middle">
+                      <form method="post" action="{{ route('sitmc-launcher.admin.featured.toggle', {instanceId: row.instance_id}) }}">
+                        {{ csrf_field() }}
+                        <div class="custom-control custom-switch">
+                          <input
+                            class="custom-control-input"
+                            type="checkbox"
+                            id="featured-{{ loop.index }}"
+                            {% if row.featured %}checked{% endif %}
+                            onchange="this.form.submit()"
+                          >
+                          <label class="custom-control-label" for="featured-{{ loop.index }}"></label>
+                        </div>
+                      </form>
                     </td>
                     <td>
                       <a

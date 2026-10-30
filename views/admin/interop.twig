@@ -180,7 +180,6 @@
               <thead>
                 <tr>
                   <th style="width: 72px;">{{ trans('sitmc-launcher::launcher.interop.publications.listed') }}</th>
-                  <th style="width: 72px;">{{ trans('sitmc-launcher::launcher.interop.featured.column') }}</th>
                   <th>{{ trans('sitmc-launcher::launcher.field.id') }}</th>
                   <th>{{ trans('sitmc-launcher::launcher.field.server_address') }}</th>
                   <th>{{ trans('sitmc-launcher::launcher.field.revision') }}</th>
@@ -201,21 +200,6 @@
                           {% if instance.published %}checked{% endif %}
                         >
                         <label class="custom-control-label" for="interop-publish-{{ instance.id }}"></label>
-                      </div>
-                    </td>
-                    <td class="align-middle">
-                      <div class="custom-control custom-switch">
-                        <input
-                          class="custom-control-input"
-                          type="checkbox"
-                          id="interop-featured-{{ instance.id }}"
-                          name="featured[]"
-                          value="{{ instance.featured_key }}"
-                          form="interop-featured-form"
-                          aria-label="{{ instance.name }}"
-                          {% if featuredKeys[instance.featured_key] is defined %}checked{% endif %}
-                        >
-                        <label class="custom-control-label" for="interop-featured-{{ instance.id }}"></label>
                       </div>
                     </td>
                     <td class="align-middle">
@@ -253,93 +237,6 @@
             </noscript>
           </div>
         </form>
-      {% endif %}
-    </div>
-  </div>
-
-  <div class="card card-primary">
-    <div class="card-header">
-      <h3 class="card-title">{{ trans('sitmc-launcher::launcher.interop.featured.title') }}</h3>
-    </div>
-    <div class="card-body">
-      <p class="text-muted mb-3">{{ trans('sitmc-launcher::launcher.interop.featured.intro') }}</p>
-
-      <form id="interop-featured-form" method="post" action="{{ route('sitmc-launcher.admin.interop.featured') }}">
-        {{ csrf_field() }}
-        <noscript><button class="btn btn-primary mb-3" type="submit">{{ trans('sitmc-launcher::launcher.interop.publications.save') }}</button></noscript>
-      </form>
-
-      {% set featuredRows = [] %}
-      {% for instance in instances %}
-        {% set featuredRows = featuredRows|merge([{
-          key: instance.featured_key,
-          origin: trans('sitmc-launcher::launcher.interop.featured.own'),
-          name: instance.name,
-          detail: instance.id,
-          server: instance.has_server ? (instance.server_address ~ (instance.server_port ? ':' ~ instance.server_port : '')) : null,
-        }]) %}
-      {% endfor %}
-      {% for peer in peerInstances %}
-        {% set featuredRows = featuredRows|merge([{
-          key: peer.featured_key,
-          origin: peer.peer_name,
-          name: peer.name,
-          detail: peer.instance_id,
-          server: peer.server_address ? (peer.server_address ~ (peer.server_port ? ':' ~ peer.server_port : '')) : null,
-          stale: peer.stale,
-        }]) %}
-      {% endfor %}
-
-      {% if featuredRows is empty %}
-        <div class="callout callout-info mb-0">{{ trans('sitmc-launcher::launcher.interop.featured.empty') }}</div>
-      {% else %}
-        <table class="table table-hover mb-0">
-          <thead>
-            <tr>
-              <th style="width: 72px;">{{ trans('sitmc-launcher::launcher.interop.featured.column') }}</th>
-              <th>{{ trans('sitmc-launcher::launcher.interop.featured.origin') }}</th>
-              <th>{{ trans('sitmc-launcher::launcher.field.id') }}</th>
-              <th>{{ trans('sitmc-launcher::launcher.field.server_address') }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in featuredRows %}
-              <tr>
-                <td class="align-middle">
-                  <div class="custom-control custom-switch">
-                    <input
-                      class="custom-control-input interop-featured-box"
-                      type="checkbox"
-                      id="interop-feat-{{ loop.index }}"
-                      name="featured[]"
-                      value="{{ row.key }}"
-                      form="interop-featured-form"
-                      {% if featuredKeys[row.key] is defined %}checked{% endif %}
-                    >
-                    <label class="custom-control-label" for="interop-feat-{{ loop.index }}"></label>
-                  </div>
-                </td>
-                <td class="align-middle">
-                  {{ row.origin }}
-                  {% if row.stale is defined and row.stale %}
-                    <span class="badge bg-warning">{{ trans('sitmc-launcher::launcher.interop.state.stale') }}</span>
-                  {% endif %}
-                </td>
-                <td class="align-middle">
-                  {{ row.name }}
-                  <div class="small text-muted"><code>{{ row.detail }}</code></div>
-                </td>
-                <td class="align-middle">
-                  {% if row.server %}
-                    <span class="text-monospace">{{ row.server }}</span>
-                  {% else %}
-                    <span class="badge bg-danger">{{ trans('sitmc-launcher::launcher.interop.publications.no-server') }}</span>
-                  {% endif %}
-                </td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
       {% endif %}
     </div>
   </div>

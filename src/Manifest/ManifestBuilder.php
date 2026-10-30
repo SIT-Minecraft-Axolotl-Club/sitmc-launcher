@@ -65,6 +65,61 @@ final class ManifestBuilder
     }
 
     /**
+     * Same document as {@see build()}, but featured local instances are forced
+     * to `sort = -1` so the launcher renders them first. `$featuredIds` holds
+     * the instance ids picked in the interop admin.
+     *
+     * @param  iterable<array<string, mixed>>  $rows
+     * @param  array<int, string>  $featuredIds
+     */
+    public function buildWithFeatured(
+        iterable $rows,
+        array $featuredIds,
+        ?string $minVersion = null,
+        ?string $latestVersion = null,
+        bool $forceUpdate = false,
+        ?int $publishedAt = null
+    ): array {
+        $featured = array_fill_keys($featuredIds, true);
+        $instances = [];
+
+        foreach ($rows as $row) {
+            if (! (bool) ($row['enabled'] ?? true)) {
+                continue;
+            }
+
+            $packUrl = $this->packUrlFor($row);
+
+            if (ManifestRules::publishProblem($row, $packUrl) !== null) {
+                continue;
+            }
+
+            $instance = $this->instance($row, $packUrl);
+
+            if (isset($featured[(string) ($row['id'] ?? '')])) {
+                $instance['sort'] = -1;
+            }
+
+            $instances[] = $instance;
+        }
+
+        usort($instances, static function (array $left, array $right): int {
+            return [$left['sort'], $left['name']] <=> [$right['sort'], $right['name']];
+        });
+
+        return [
+            'schema' => ManifestRules::SCHEMA,
+            'generated_at' => gmdate('Y-m-d\TH:i:s\Z', $publishedAt ?? time()),
+            'launcher' => [
+                'min_version' => self::textOrNull($minVersion),
+                'latest_version' => self::textOrNull($latestVersion),
+                'force_update' => $forceUpdate,
+            ],
+            'instances' => $instances,
+        ];
+    }
+
+    /**
      * Stable identifier of a document, so a manifest that did not change can be
      * answered with 304 instead of being downloaded again.
      *

@@ -219,6 +219,8 @@ problem:
 status:
   created: "实例已创建，请上传它的整合包。"
   saved: "实例已保存。"
+  featured-on: "已设为精选：主页清单将排最前（sort = -1）。"
+  featured-off: "已取消精选。"
   deleted: "实例及其整合包已删除。"
   pack-uploaded: "整合包已发布为版本 :revision。"
   pack-activated: "已回滚到版本 :revision。"

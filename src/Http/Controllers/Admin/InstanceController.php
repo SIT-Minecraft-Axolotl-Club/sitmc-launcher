@@ -25,17 +25,27 @@ final class InstanceController
         private LauncherRepository $repository,
         private PackStore $packs,
         private ExternalPackProbe $probe,
+        private \SITMinecraft\Launcher\Interop\InteropRepository $interop,
     ) {}
 
     public function index(Request $request): View
     {
         $builder = new ManifestBuilder($request->root());
 
+        $featured = array_fill_keys(array_map(
+            static fn (array $row): string => (string) $row['instance_id'],
+            array_filter(
+                $this->interop->featured(),
+                static fn (array $row): bool => $row['peer_site_id'] === null
+            )
+        ), true);
+
         $instances = [];
 
         foreach ($this->repository->rows() as $row) {
             $row['problem'] = ManifestRules::publishProblem($row, $builder->packUrlFor($row));
             $row['pack_url_resolved'] = $builder->packUrlFor($row);
+            $row['featured'] = isset($featured[(string) $row['instance_id']]);
             $instances[] = $row;
         }
 
@@ -323,6 +333,45 @@ final class InstanceController
             (int) ($this->repository->row($instanceId)['revision'] ?? 1) + 1,
             1
         );
+    }
+
+    /**
+     * Toggles the local featured flag for one instance. Featured instances get
+     * `sort = -1` in the launcher manifest.
+     */
+    public function toggleFeatured(string $instanceId): RedirectResponse
+    {
+        if ($this->repository->row($instanceId) === null) {
+            abort(404);
+        }
+
+        $current = array_filter(
+            $this->interop->featured(),
+            static fn (array $row): bool => $row['peer_site_id'] === null
+        );
+
+        $keep = [];
+        $found = false;
+
+        foreach ($current as $row) {
+            if ($row['instance_id'] === $instanceId) {
+                $found = true;
+
+                continue;
+            }
+
+            $keep[] = 'local:'.$row['instance_id'];
+        }
+
+        if (! $found) {
+            $keep[] = 'local:'.$instanceId;
+        }
+
+        $this->interop->saveFeatured($keep);
+
+        return redirect()
+            ->route('sitmc-launcher.admin.index')
+            ->with('sitmc_launcher_status', trans('sitmc-launcher::launcher.status.' . ($found ? 'featured-off' : 'featured-on')));
     }
 
     /**
