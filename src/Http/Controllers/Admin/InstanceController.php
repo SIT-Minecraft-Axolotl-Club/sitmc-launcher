@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\View\View;
 use RuntimeException;
 use SITMinecraft\Launcher\Manifest\LauncherRepository;
+use SITMinecraft\Launcher\Manifest\ExternalPackProbe;
 use SITMinecraft\Launcher\Manifest\ManifestBuilder;
 use SITMinecraft\Launcher\Manifest\ManifestRules;
 use SITMinecraft\Launcher\Manifest\PackStore;
@@ -23,6 +24,7 @@ final class InstanceController
     public function __construct(
         private LauncherRepository $repository,
         private PackStore $packs,
+        private ExternalPackProbe $probe,
     ) {}
 
     public function index(Request $request): View
@@ -161,9 +163,9 @@ final class InstanceController
 
         $values = $request->validate([
             'url' => ['required', 'string', 'max:512'],
-            // Externally hosted packs may omit the digest: this site never saw
-            // the file, so it cannot compute one. Launchers fall back to
-            // "no verification" for such artifacts.
+            // Externally hosted packs may omit the digest: when left empty the
+            // server probes the URL and computes SHA-1 / size automatically.
+            // The probe is best-effort; a failed probe stores the URL as-is.
             'sha1' => ['nullable', 'string', 'regex:/^[0-9a-fA-F]{40}$/'],
             'size' => ['nullable', 'integer', 'min:1'],
         ]);
@@ -176,12 +178,24 @@ final class InstanceController
             ]);
         }
 
+        $sha1 = isset($values['sha1']) ? strtolower($values['sha1']) : null;
+        $size = $values['size'] ?? null;
+
+        if ($sha1 === null || $size === null) {
+            $probed = $this->probe->probe($values['url']);
+
+            if ($probed['ok']) {
+                $sha1 ??= $probed['sha1'] ?? null;
+                $size ??= $probed['size'] ?? null;
+            }
+        }
+
         $revision = $this->nextRevision($instanceId);
 
         $this->repository->savePack($instanceId, $revision, [
             'url' => $values['url'],
-            'sha1' => isset($values['sha1']) ? strtolower($values['sha1']) : null,
-            'size' => $values['size'] ?? 0,
+            'sha1' => $sha1,
+            'size' => $size ?? 0,
             'created_at' => now(),
             'updated_at' => now(),
         ]);

@@ -166,8 +166,8 @@ packs:
   limits: "PHP limits: :upload per file, :post per POST. Use the external URL form below for packs larger than that."
   upload-button: "Upload and publish"
   external-title: "Register an external pack"
-  external-intro: "Use this when the pack already lives elsewhere (object storage or a CDN): clients download that URL directly. The SHA-1 and size may be left empty, but clients then cannot verify integrity."
-  external-sha1-hint: "Optional. 40 lowercase hex characters; when empty clients skip integrity verification. Providing it is strongly recommended."
+  external-intro: "Use this when the pack already lives elsewhere (object storage or a CDN): clients download that URL directly. Leave the SHA-1 and size empty and the server probes the URL to compute them; you can still fill them manually."
+  external-sha1-hint: "Optional. When empty the server fetches the URL and computes the SHA-1 and size; you may also enter 40 lowercase hex characters manually."
   external-button: "Register and publish"
   too-large: "The pack exceeds the upload size PHP allows. Raise upload_max_filesize / post_max_size in php.ini, or use an external URL."
   error:

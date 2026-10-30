@@ -21,6 +21,7 @@ use SITMinecraft\Launcher\Interop\PeerAggregator;
 use SITMinecraft\Launcher\Interop\PeerDiscovery;
 use SITMinecraft\Launcher\Interop\PeerFetcher;
 use SITMinecraft\Launcher\Interop\SiteDocumentService;
+use SITMinecraft\Launcher\Manifest\ExternalPackProbe;
 use SITMinecraft\Launcher\Manifest\PackStore;
 use SITMinecraft\Launcher\Update\ReleaseRules;
 
@@ -40,6 +41,8 @@ return function ($plugin) {
     app()->singleton(PackStore::class, function () {
         return new PackStore(Storage::disk(config('sitmc-launcher.disk', 'local')));
     });
+
+    app()->singleton(ExternalPackProbe::class);
 
     app()->singleton(TokenVerifier::class, function () {
         return new TokenVerifier(config(

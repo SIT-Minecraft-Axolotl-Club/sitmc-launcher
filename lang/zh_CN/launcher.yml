@@ -166,8 +166,8 @@ packs:
   limits: "PHP 限制：单文件 :upload，POST :post。整合包超过该限制时请改用下面的外部链接。"
   upload-button: "上传并发布新版本"
   external-title: "登记外链整合包"
-  external-intro: "整合包已放在别处（对象存储/CDN）时用这里：客户端会直接去下载该地址。SHA-1 和大小都可以留空，但客户端将无法校验完整性。"
-  external-sha1-hint: "可选。40 位小写十六进制；留空时客户端不做完整性校验，建议尽量提供。"
+  external-intro: "整合包已放在别处（对象存储/CDN）时用这里：客户端会直接去下载该地址。SHA-1 和大小留空时，服务器会自动访问该地址计算；探测失败也可以手动填。"
+  external-sha1-hint: "可选。留空时服务器自动访问该地址计算 SHA-1 和大小；也可以手动填 40 位小写十六进制。"
   external-button: "登记并发布新版本"
   too-large: "整合包超过了 PHP 允许的上传大小，请调大 php.ini 的 upload_max_filesize / post_max_size，或改用外部链接。"
   error:
