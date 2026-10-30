@@ -26,6 +26,7 @@ final class InstanceController
         private PackStore $packs,
         private ExternalPackProbe $probe,
         private \SITMinecraft\Launcher\Interop\InteropRepository $interop,
+        private \SITMinecraft\Launcher\Interop\SiteDocumentService $documents,
     ) {}
 
     public function index(Request $request): View
@@ -54,6 +55,14 @@ final class InstanceController
             'settings' => $this->repository->settings(),
             'limits' => $this->uploadLimits(),
             'manifestPath' => '/api/launcher/manifest',
+            'peerFeatured' => $this->documents->friends($request->root())['document'],
+            'peerFeaturedKeys' => array_fill_keys(array_map(
+                static fn (array $row): string => $row['peer_site_id'].':'.$row['instance_id'],
+                array_filter(
+                    $this->interop->featured(),
+                    static fn (array $row): bool => $row['peer_site_id'] !== null
+                )
+            ), true),
             'status' => session('sitmc_launcher_status'),
         ]);
     }
@@ -333,6 +342,50 @@ final class InstanceController
             (int) ($this->repository->row($instanceId)['revision'] ?? 1) + 1,
             1
         );
+    }
+
+    /**
+     * Saves the featured peer-instance selection. Peer keys are validated
+     * against the current friend snapshots; local keys are preserved.
+     */
+    public function savePeerFeatured(Request $request): RedirectResponse
+    {
+        $values = $request->validate([
+            'featured' => ['nullable', 'array'],
+            'featured.*' => ['string', 'max:200'],
+        ]);
+
+        $wanted = array_fill_keys(array_map('strval', $values['featured'] ?? []), true);
+        $friends = $this->documents->friends($request->root())['document'];
+
+        $valid = [];
+
+        foreach ($friends['sites'] ?? [] as $siteRow) {
+            foreach ($siteRow['instances'] ?? [] as $instance) {
+                $key = $siteRow['site_id'].':'.(string) $instance['id'];
+
+                if (isset($wanted[$key])) {
+                    $valid[] = $key;
+                }
+            }
+        }
+
+        // Keep existing local selections, replace the peer ones.
+        $local = array_map(
+            static fn (array $row): string => 'local:'.$row['instance_id'],
+            array_filter(
+                $this->interop->featured(),
+                static fn (array $row): bool => $row['peer_site_id'] === null
+            )
+        );
+
+        $this->interop->saveFeatured(array_merge($local, $valid));
+
+        return redirect()
+            ->route('sitmc-launcher.admin.index')
+            ->with('sitmc_launcher_status', trans('sitmc-launcher::launcher.interop.status.featured-saved', [
+                'count' => count($valid),
+            ]));
     }
 
     /**

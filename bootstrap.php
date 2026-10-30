@@ -185,6 +185,9 @@ return function ($plugin) {
                     ->where('instanceId', '[A-Za-z0-9_-]+')
                     ->name('sitmc-launcher.admin.featured.toggle');
 
+                $router->post('featured/peers', [InstanceController::class, 'savePeerFeatured'])
+                    ->name('sitmc-launcher.admin.featured.peers');
+
                 $router->post('instances/{instanceId}/packs', [InstanceController::class, 'storePack'])
                     ->where('instanceId', '[A-Za-z0-9_-]+')
                     ->name('sitmc-launcher.admin.packs.store');

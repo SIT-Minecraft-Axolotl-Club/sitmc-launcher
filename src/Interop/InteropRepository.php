@@ -263,6 +263,43 @@ final class InteropRepository
     }
 
     /**
+     * Local featured ids only (peer_site_id null) — used by the manifest.
+     *
+     * @return array<int, string>
+     */
+    public function featuredLocalIds(): array
+    {
+        return array_map(
+            static fn (array $row): string => (string) $row['instance_id'],
+            array_values(array_filter(
+                $this->featured(),
+                static fn (array $row): bool => $row['peer_site_id'] === null
+            ))
+        );
+    }
+
+    /**
+     * Featured peer instances grouped by peer site id — used to inject friend
+     * instances into the launcher manifest.
+     *
+     * @return array<string, array<int, string>> map of siteId => instanceIds
+     */
+    public function featuredPeerIds(): array
+    {
+        $map = [];
+
+        foreach ($this->featured() as $row) {
+            if ($row['peer_site_id'] === null) {
+                continue;
+            }
+
+            $map[$row['peer_site_id']][] = $row['instance_id'];
+        }
+
+        return $map;
+    }
+
+    /**
      * Replaces the whole featured selection. Keys are `local:{instanceId}` for
      * own instances and `{peerSiteId}:{instanceId}` for peer instances.
      *

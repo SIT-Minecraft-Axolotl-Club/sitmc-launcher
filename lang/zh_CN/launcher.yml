@@ -303,11 +303,12 @@ interop:
 
   featured:
     title: "精选实例"
-    intro: "给启动器主页用：勾选的实例会通过 /api/launcher/featured 输出在最前面（sort = -1）。可以从本站和友站的实例里选，不会出现在对外清单里。"
+    intro: "勾选的实例会以 sort = -1 出现在 /api/launcher/manifest 主清单最前面。本站实例用列表里的开关；友站实例在下方单独勾选。"
     column: "精选"
     origin: "来源"
     own: "本站"
     empty: "还没有可选择的实例；先上架本站实例或同步友站。"
+    no-peers: "还没有已同步的友站实例；先在「对外清单」里添加并同步友站。"
 
   peers:
     title: "友站"

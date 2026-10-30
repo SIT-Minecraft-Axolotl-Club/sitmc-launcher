@@ -303,11 +303,12 @@ interop:
 
   featured:
     title: "Featured instances"
-    intro: "For the launcher home page: selected instances are served at /api/launcher/featured first (sort = -1). Pick from local and peer instances; they never appear in the interop documents."
+    intro: "Selected instances appear first (sort = -1) in /api/launcher/manifest. Toggle local instances in the list above; pick peer instances below."
     column: "Featured"
     origin: "Origin"
     own: "This site"
     empty: "Nothing to pick yet; publish local instances or sync peers first."
+    no-peers: "No synced peer instances yet; add and sync peers on the Catalog tab first."
 
   peers:
     title: "Peers"

@@ -179,6 +179,68 @@
           </button>
         </div>
       </form>
+
+      <div class="card card-secondary mt-3">
+        <div class="card-header">
+          <h3 class="card-title">{{ trans('sitmc-launcher::launcher.interop.featured.title') }}</h3>
+        </div>
+        <div class="card-body">
+          <p class="text-muted small mb-3">{{ trans('sitmc-launcher::launcher.interop.featured.intro') }}</p>
+
+          {% set peerRows = [] %}
+          {% for site in peerFeatured.sites %}
+            {% for instance in site.instances %}
+              {% set peerRows = peerRows|merge([{key: site.site_id ~ ':' ~ instance.id, origin: site.name, name: instance.name, stale: site.stale}]) %}
+            {% endfor %}
+          {% endfor %}
+
+          {% if peerRows is empty %}
+            <div class="callout callout-info mb-0">{{ trans('sitmc-launcher::launcher.interop.featured.no-peers') }}</div>
+          {% else %}
+            <form method="post" action="{{ route('sitmc-launcher.admin.featured.peers') }}">
+              {{ csrf_field() }}
+              <table class="table table-sm table-hover mb-3">
+                <thead>
+                  <tr>
+                    <th style="width: 48px;">{{ trans('sitmc-launcher::launcher.interop.featured.column') }}</th>
+                    <th>{{ trans('sitmc-launcher::launcher.interop.featured.origin') }}</th>
+                    <th>{{ trans('sitmc-launcher::launcher.field.id') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for row in peerRows %}
+                    <tr>
+                      <td class="align-middle">
+                        <div class="custom-control custom-switch">
+                          <input
+                            class="custom-control-input"
+                            type="checkbox"
+                            id="peer-feat-{{ loop.index }}"
+                            name="featured[]"
+                            value="{{ row.key }}"
+                            {% if peerFeaturedKeys[row.key] is defined %}checked{% endif %}
+                          >
+                          <label class="custom-control-label" for="peer-feat-{{ loop.index }}"></label>
+                        </div>
+                      </td>
+                      <td class="align-middle">
+                        {{ row.origin }}
+                        {% if row.stale %}
+                          <span class="badge bg-warning">{{ trans('sitmc-launcher::launcher.interop.state.stale') }}</span>
+                        {% endif %}
+                      </td>
+                      <td class="align-middle">{{ row.name }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+              <button class="btn btn-primary btn-sm" type="submit">
+                {{ trans('sitmc-launcher::launcher.interop.publications.save') }}
+              </button>
+            </form>
+          {% endif %}
+        </div>
+      </div>
     </div>
   </div>
 {% endblock %}
