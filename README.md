@@ -27,7 +27,6 @@ pnpm app:build
 ```
 
 接口契约见启动器仓库的 `docs/launcher-protocol.md`;本插件实现的端点:
-
 | 端点 | 说明 |
 | --- | --- |
 | `GET /api/launcher/manifest` | 清单 JSON。带 `ETag`,客户端回传 `If-None-Match` 时返回 `304` |
@@ -37,6 +36,8 @@ pnpm app:build
 | `GET /api/launcher/update/{target}/{arch}/{current_version}` | Tauri v2 **动态更新器**文档 `{version, notes, pub_date, url, signature}`;没有比 `current_version` 更新的版本时返回 `204` |
 
 清单、公告与更新元数据都是公开的(启动器不带凭据),但**不包含任何玩家数据**,只描述有哪些实例、什么版本、从哪里下载。
+
+启动器侧的完整对接说明见 [launcher-integration.md](launcher-integration.md)。
 
 ## 对外清单(mc-interop v1)
 
