@@ -114,9 +114,6 @@ return function ($plugin) {
                 $router->get('friends', [InteropController::class, 'friends'])
                     ->name('sitmc-launcher.friends');
 
-                $router->get('featured', [InteropController::class, 'featured'])
-                    ->name('sitmc-launcher.featured');
-
                 $router->get('packs/{instanceId}/{revision}', [PackController::class, 'show'])
                     ->where(['instanceId' => '[A-Za-z0-9_-]+', 'revision' => '[0-9]+'])
                     ->name('sitmc-launcher.pack');
@@ -181,12 +178,8 @@ return function ($plugin) {
                     ->where('instanceId', '[A-Za-z0-9_-]+')
                     ->name('sitmc-launcher.admin.destroy');
 
-                $router->post('instances/{instanceId}/featured', [InstanceController::class, 'toggleFeatured'])
-                    ->where('instanceId', '[A-Za-z0-9_-]+')
-                    ->name('sitmc-launcher.admin.featured.toggle');
-
-                $router->post('featured/peers', [InstanceController::class, 'savePeerFeatured'])
-                    ->name('sitmc-launcher.admin.featured.peers');
+                $router->post('featured', [InstanceController::class, 'saveFeatured'])
+                    ->name('sitmc-launcher.admin.featured.save');
 
                 $router->post('instances/{instanceId}/packs', [InstanceController::class, 'storePack'])
                     ->where('instanceId', '[A-Za-z0-9_-]+')

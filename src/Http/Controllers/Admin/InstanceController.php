@@ -33,12 +33,11 @@ final class InstanceController
     {
         $builder = new ManifestBuilder($request->root());
 
-        $featured = array_fill_keys(array_map(
-            static fn (array $row): string => (string) $row['instance_id'],
-            array_filter(
-                $this->interop->featured(),
-                static fn (array $row): bool => $row['peer_site_id'] === null
-            )
+        $featuredKeys = array_fill_keys(array_map(
+            static fn (array $row): string => $row['peer_site_id'] === null
+                ? 'local:'.$row['instance_id']
+                : $row['peer_site_id'].':'.$row['instance_id'],
+            $this->interop->featured()
         ), true);
 
         $instances = [];
@@ -46,8 +45,55 @@ final class InstanceController
         foreach ($this->repository->rows() as $row) {
             $row['problem'] = ManifestRules::publishProblem($row, $builder->packUrlFor($row));
             $row['pack_url_resolved'] = $builder->packUrlFor($row);
-            $row['featured'] = isset($featured[(string) $row['instance_id']]);
             $instances[] = $row;
+        }
+
+        // One flat candidate list: local instances first, then every instance
+        // published by a synced peer. Featured entries from both sides are
+        // pinned to `sort = -1` in the launcher manifest.
+        $candidates = [];
+
+        foreach ($instances as $row) {
+            $address = trim((string) ($row['server_address'] ?? ''));
+
+            $candidates[] = [
+                'key' => 'local:'.$row['instance_id'],
+                'origin' => trans('sitmc-launcher::launcher.interop.featured.own'),
+                'origin_site_id' => null,
+                'id' => (string) $row['instance_id'],
+                'name' => (string) ($row['name'] ?? $row['instance_id']),
+                'server' => $address === ''
+                    ? null
+                    : $address.(! empty($row['server_port']) ? ':'.$row['server_port'] : ''),
+                'stale' => false,
+            ];
+        }
+
+        $friends = $this->documents->friends($request->root())['document'];
+
+        foreach ($friends['sites'] ?? [] as $siteRow) {
+            $siteId = (string) $siteRow['site_id'];
+
+            foreach ($siteRow['instances'] ?? [] as $instance) {
+                $rawId = (string) ($instance['id'] ?? '');
+                $raw = str_starts_with($rawId, $siteId.':')
+                    ? substr($rawId, strlen($siteId) + 1)
+                    : $rawId;
+                $address = trim((string) ($instance['server']['address'] ?? ''));
+                $port = $instance['server']['port'] ?? null;
+
+                $candidates[] = [
+                    'key' => $siteId.':'.$raw,
+                    'origin' => (string) $siteRow['name'],
+                    'origin_site_id' => $siteId,
+                    'id' => $raw,
+                    'name' => (string) ($instance['name'] ?? $raw),
+                    'server' => $address === ''
+                        ? null
+                        : $address.($port !== null ? ':'.$port : ''),
+                    'stale' => (bool) ($siteRow['stale'] ?? false),
+                ];
+            }
         }
 
         return view('sitmc-launcher::admin.instances', [
@@ -55,14 +101,8 @@ final class InstanceController
             'settings' => $this->repository->settings(),
             'limits' => $this->uploadLimits(),
             'manifestPath' => '/api/launcher/manifest',
-            'peerFeatured' => $this->documents->friends($request->root())['document'],
-            'peerFeaturedKeys' => array_fill_keys(array_map(
-                static fn (array $row): string => $row['peer_site_id'].':'.$row['instance_id'],
-                array_filter(
-                    $this->interop->featured(),
-                    static fn (array $row): bool => $row['peer_site_id'] !== null
-                )
-            ), true),
+            'featuredCandidates' => $candidates,
+            'featuredKeys' => $featuredKeys,
             'status' => session('sitmc_launcher_status'),
         ]);
     }
@@ -345,86 +385,55 @@ final class InstanceController
     }
 
     /**
-     * Saves the featured peer-instance selection. Peer keys are validated
-     * against the current friend snapshots; local keys are preserved.
+     * Replaces the whole featured selection. Keys are `local:{instanceId}` for
+     * own instances and `{siteId}:{instanceId}` for peer instances. Featured
+     * entries — from either side — are pinned to `sort = -1` in the launcher
+     * manifest.
      */
-    public function savePeerFeatured(Request $request): RedirectResponse
+    public function saveFeatured(Request $request): RedirectResponse
     {
         $values = $request->validate([
             'featured' => ['nullable', 'array'],
             'featured.*' => ['string', 'max:200'],
         ]);
 
-        $wanted = array_fill_keys(array_map('strval', $values['featured'] ?? []), true);
+        $wanted = array_map('strval', $values['featured'] ?? []);
+
+        // Validate against what can actually be served right now: published
+        // local instances plus instances from the current peer snapshots.
+        $known = [];
+
+        foreach ($this->repository->rows() as $row) {
+            $known['local:'.(string) $row['id']] = true;
+        }
+
         $friends = $this->documents->friends($request->root())['document'];
 
-        $valid = [];
-
         foreach ($friends['sites'] ?? [] as $siteRow) {
-            foreach ($siteRow['instances'] ?? [] as $instance) {
-                $key = $siteRow['site_id'].':'.(string) $instance['id'];
+            $siteId = (string) $siteRow['site_id'];
 
-                if (isset($wanted[$key])) {
-                    $valid[] = $key;
-                }
+            foreach ($siteRow['instances'] ?? [] as $instance) {
+                $rawId = (string) ($instance['id'] ?? '');
+                $raw = str_starts_with($rawId, $siteId.':')
+                    ? substr($rawId, strlen($siteId) + 1)
+                    : $rawId;
+
+                $known[$siteId.':'.$raw] = true;
             }
         }
 
-        // Keep existing local selections, replace the peer ones.
-        $local = array_map(
-            static fn (array $row): string => 'local:'.$row['instance_id'],
-            array_filter(
-                $this->interop->featured(),
-                static fn (array $row): bool => $row['peer_site_id'] === null
-            )
-        );
+        $valid = array_values(array_filter(
+            array_unique($wanted),
+            static fn (string $key): bool => isset($known[$key])
+        ));
 
-        $this->interop->saveFeatured(array_merge($local, $valid));
+        $this->interop->saveFeatured($valid);
 
         return redirect()
             ->route('sitmc-launcher.admin.index')
             ->with('sitmc_launcher_status', trans('sitmc-launcher::launcher.interop.status.featured-saved', [
                 'count' => count($valid),
             ]));
-    }
-
-    /**
-     * Toggles the local featured flag for one instance. Featured instances get
-     * `sort = -1` in the launcher manifest.
-     */
-    public function toggleFeatured(string $instanceId): RedirectResponse
-    {
-        if ($this->repository->row($instanceId) === null) {
-            abort(404);
-        }
-
-        $current = array_filter(
-            $this->interop->featured(),
-            static fn (array $row): bool => $row['peer_site_id'] === null
-        );
-
-        $keep = [];
-        $found = false;
-
-        foreach ($current as $row) {
-            if ($row['instance_id'] === $instanceId) {
-                $found = true;
-
-                continue;
-            }
-
-            $keep[] = 'local:'.$row['instance_id'];
-        }
-
-        if (! $found) {
-            $keep[] = 'local:'.$instanceId;
-        }
-
-        $this->interop->saveFeatured($keep);
-
-        return redirect()
-            ->route('sitmc-launcher.admin.index')
-            ->with('sitmc_launcher_status', trans('sitmc-launcher::launcher.status.' . ($found ? 'featured-off' : 'featured-on')));
     }
 
     /**

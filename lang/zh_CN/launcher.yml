@@ -302,13 +302,12 @@ interop:
     save: "保存"
 
   featured:
-    title: "精选实例"
-    intro: "勾选的实例会以 sort = -1 出现在 /api/launcher/manifest 主清单最前面。本站实例用列表里的开关；友站实例在下方单独勾选。"
+    title: "精选置顶"
+    intro: "勾选的实例（本站或友站）会以 sort = -1 排在下发给启动器的清单最前面，其余实例顺序不变。"
     column: "精选"
     origin: "来源"
     own: "本站"
     empty: "还没有可选择的实例；先上架本站实例或同步友站。"
-    no-peers: "还没有已同步的友站实例；先在「对外清单」里添加并同步友站。"
 
   peers:
     title: "友站"

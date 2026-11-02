@@ -302,13 +302,12 @@ interop:
     save: "Save"
 
   featured:
-    title: "Featured instances"
-    intro: "Selected instances appear first (sort = -1) in /api/launcher/manifest. Toggle local instances in the list above; pick peer instances below."
+    title: "Featured (pinned)"
+    intro: "Checked instances — local or peer — are pinned to the top of the launcher manifest with sort = -1. Everything else keeps its normal order."
     column: "Featured"
     origin: "Origin"
     own: "This site"
     empty: "Nothing to pick yet; publish local instances or sync peers first."
-    no-peers: "No synced peer instances yet; add and sync peers on the Catalog tab first."
 
   peers:
     title: "Peers"

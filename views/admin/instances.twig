@@ -38,7 +38,6 @@
                   <th>{{ trans('sitmc-launcher::launcher.field.revision') }}</th>
                   <th>{{ trans('sitmc-launcher::launcher.field.game_version') }}</th>
                   <th>{{ trans('sitmc-launcher::launcher.instances.publish') }}</th>
-                  <th style="width: 72px;">{{ trans('sitmc-launcher::launcher.interop.featured.column') }}</th>
                   <th></th>
                 </tr>
               </thead>
@@ -71,21 +70,6 @@
                           {{ trans('sitmc-launcher::launcher.instances.published') }}
                         </span>
                       {% endif %}
-                    </td>
-                    <td class="align-middle">
-                      <form method="post" action="{{ route('sitmc-launcher.admin.featured.toggle', {instanceId: row.instance_id}) }}">
-                        {{ csrf_field() }}
-                        <div class="custom-control custom-switch">
-                          <input
-                            class="custom-control-input"
-                            type="checkbox"
-                            id="featured-{{ loop.index }}"
-                            {% if row.featured %}checked{% endif %}
-                            onchange="this.form.submit()"
-                          >
-                          <label class="custom-control-label" for="featured-{{ loop.index }}"></label>
-                        </div>
-                      </form>
                     </td>
                     <td>
                       <a
@@ -187,17 +171,10 @@
         <div class="card-body">
           <p class="text-muted small mb-3">{{ trans('sitmc-launcher::launcher.interop.featured.intro') }}</p>
 
-          {% set peerRows = [] %}
-          {% for site in peerFeatured.sites %}
-            {% for instance in site.instances %}
-              {% set peerRows = peerRows|merge([{key: site.site_id ~ ':' ~ instance.id, origin: site.name, name: instance.name, stale: site.stale}]) %}
-            {% endfor %}
-          {% endfor %}
-
-          {% if peerRows is empty %}
-            <div class="callout callout-info mb-0">{{ trans('sitmc-launcher::launcher.interop.featured.no-peers') }}</div>
+          {% if featuredCandidates is empty %}
+            <div class="callout callout-info mb-0">{{ trans('sitmc-launcher::launcher.interop.featured.empty') }}</div>
           {% else %}
-            <form method="post" action="{{ route('sitmc-launcher.admin.featured.peers') }}">
+            <form method="post" action="{{ route('sitmc-launcher.admin.featured.save') }}">
               {{ csrf_field() }}
               <table class="table table-sm table-hover mb-3">
                 <thead>
@@ -208,19 +185,19 @@
                   </tr>
                 </thead>
                 <tbody>
-                  {% for row in peerRows %}
+                  {% for row in featuredCandidates %}
                     <tr>
                       <td class="align-middle">
                         <div class="custom-control custom-switch">
                           <input
                             class="custom-control-input"
                             type="checkbox"
-                            id="peer-feat-{{ loop.index }}"
+                            id="feat-{{ loop.index }}"
                             name="featured[]"
                             value="{{ row.key }}"
-                            {% if peerFeaturedKeys[row.key] is defined %}checked{% endif %}
+                            {% if featuredKeys[row.key] is defined %}checked{% endif %}
                           >
-                          <label class="custom-control-label" for="peer-feat-{{ loop.index }}"></label>
+                          <label class="custom-control-label" for="feat-{{ loop.index }}"></label>
                         </div>
                       </td>
                       <td class="align-middle">
@@ -229,7 +206,13 @@
                           <span class="badge bg-warning">{{ trans('sitmc-launcher::launcher.interop.state.stale') }}</span>
                         {% endif %}
                       </td>
-                      <td class="align-middle">{{ row.name }}</td>
+                      <td class="align-middle">
+                        {{ row.name }}
+                        <div class="small text-muted">
+                          <code>{{ row.id }}</code>
+                          {% if row.server %} · {{ row.server }}{% endif %}
+                        </div>
+                      </td>
                     </tr>
                   {% endfor %}
                 </tbody>
